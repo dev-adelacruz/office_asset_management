@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>RailsTemplate</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= vite_client_tag %>
+    <%= vite_stylesheet_tag 'tailwind.css' %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    <%= yield %>
+    <div id="root"></div>
+    <%= vite_javascript_tag 'application.tsx' %>
+  </body>
+</html>
