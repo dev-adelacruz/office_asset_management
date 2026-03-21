@@ -10,9 +10,26 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "asset_requests", force: :cascade do |t|
+    t.string "asset_type", null: false
+    t.datetime "created_at", null: false
+    t.text "justification", null: false
+    t.text "notes"
+    t.date "preferred_fulfillment_date"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "urgency", default: "medium", null: false
+    t.bigint "user_id", null: false
+    t.index ["asset_type"], name: "index_asset_requests_on_asset_type"
+    t.index ["created_at"], name: "index_asset_requests_on_created_at"
+    t.index ["status"], name: "index_asset_requests_on_status"
+    t.index ["urgency"], name: "index_asset_requests_on_urgency"
+    t.index ["user_id"], name: "index_asset_requests_on_user_id"
+  end
 
   create_table "asset_status_logs", force: :cascade do |t|
     t.bigint "asset_id", null: false
@@ -48,6 +65,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_150000) do
     t.index ["status"], name: "index_assets_on_status"
   end
 
+  create_table "license_seats", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "license_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["license_id", "user_id"], name: "index_license_seats_on_license_id_and_user_id", unique: true
+    t.index ["license_id"], name: "index_license_seats_on_license_id"
+    t.index ["user_id"], name: "index_license_seats_on_user_id"
+  end
+
+  create_table "licenses", force: :cascade do |t|
+    t.decimal "cost", precision: 10, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.date "expiry_date", null: false
+    t.text "license_key", null: false
+    t.text "notes"
+    t.string "purchase_order_number"
+    t.string "renewal_contact"
+    t.string "software_name", null: false
+    t.integer "total_seats", null: false
+    t.datetime "updated_at", null: false
+    t.string "vendor", null: false
+    t.index ["expiry_date"], name: "index_licenses_on_expiry_date"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "avatar_url"
     t.datetime "created_at", null: false
@@ -68,6 +110,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_150000) do
     t.index ["role"], name: "index_users_on_role"
   end
 
+  add_foreign_key "asset_requests", "users"
   add_foreign_key "asset_status_logs", "assets"
   add_foreign_key "asset_status_logs", "users", column: "changed_by_id"
+  add_foreign_key "license_seats", "licenses"
+  add_foreign_key "license_seats", "users"
 end
