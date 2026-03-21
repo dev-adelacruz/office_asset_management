@@ -19,6 +19,8 @@ RSpec.describe "Audit Logs" do
         parameter name: :auditable_type, in: :query, type: :string, required: false
         parameter name: :from_date, in: :query, type: :string, required: false
         parameter name: :to_date, in: :query, type: :string, required: false
+        parameter name: :page, in: :query, type: :integer, required: false
+        parameter name: :per_page, in: :query, type: :integer, required: false
 
         response(200, "returns audit logs for executive") do
           before do
@@ -32,6 +34,10 @@ RSpec.describe "Audit Logs" do
             expect(response).to have_http_status :ok
             expect(json_response[:status][:code]).to eq 200
             expect(json_response[:status][:data][:audit_logs].length).to eq 2
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:total_count]).to eq 2
+            expect(pagination[:current_page]).to eq 1
+            expect(pagination[:per_page]).to eq 25
           end
         end
 
@@ -78,6 +84,28 @@ RSpec.describe "Audit Logs" do
 
           run_test! do |response|
             expect(json_response[:status][:data][:audit_logs].length).to eq 1
+          end
+        end
+
+        response(200, "paginates results") do
+          let(:page) { 2 }
+          let(:per_page) { 1 }
+
+          before do
+            create(:audit_log, actor: executive, auditable: asset, action: "create")
+            create(:audit_log, actor: manager, auditable: asset, action: "update")
+            sign_in executive
+          end
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            data = json_response[:status][:data]
+            expect(data[:audit_logs].length).to eq 1
+            pagination = data[:pagination]
+            expect(pagination[:current_page]).to eq 2
+            expect(pagination[:total_pages]).to eq 2
+            expect(pagination[:total_count]).to eq 2
+            expect(pagination[:per_page]).to eq 1
           end
         end
 

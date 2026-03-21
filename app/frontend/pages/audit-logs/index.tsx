@@ -4,6 +4,7 @@ import { fetchAuditLogs } from '../../state/auditLogs/auditLogSlice';
 import { RootState } from '../../state/store';
 import { AuditLog } from '../../interfaces/state/auditLogState';
 import AppLayout from '../../components/layout/AppLayout';
+import Pagination from '../../components/Pagination';
 import { ScrollText, Filter, X } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -113,23 +114,28 @@ const ChangesPanel: React.FC<ChangesPanelProps> = ({ log, onClose }) => {
 
 const AuditLogsPage: React.FC = () => {
   const dispatch = useDispatch();
-  const { audit_logs, isLoading, error } = useSelector((s: RootState) => s.auditLogs);
+  const { audit_logs, pagination, isLoading, error } = useSelector((s: RootState) => s.auditLogs);
 
   const [actorFilter, setActorFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState<AuditLog | null>(null);
 
+  const buildFilters = (page: number) => ({
+    actor_id: actorFilter || undefined,
+    action_type: actionFilter || undefined,
+    auditable_type: typeFilter || undefined,
+    from_date: fromDate || undefined,
+    to_date: toDate || undefined,
+    page,
+  });
+
   const applyFilters = () => {
-    dispatch(fetchAuditLogs({
-      actor_id: actorFilter || undefined,
-      action_type: actionFilter || undefined,
-      auditable_type: typeFilter || undefined,
-      from_date: fromDate || undefined,
-      to_date: toDate || undefined,
-    }) as any);
+    setCurrentPage(1);
+    dispatch(fetchAuditLogs(buildFilters(1)) as any);
   };
 
   const clearFilters = () => {
@@ -138,11 +144,17 @@ const AuditLogsPage: React.FC = () => {
     setTypeFilter('');
     setFromDate('');
     setToDate('');
-    dispatch(fetchAuditLogs({}) as any);
+    setCurrentPage(1);
+    dispatch(fetchAuditLogs({ page: 1 }) as any);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    dispatch(fetchAuditLogs(buildFilters(page)) as any);
   };
 
   useEffect(() => {
-    dispatch(fetchAuditLogs({}) as any);
+    dispatch(fetchAuditLogs({ page: 1 }) as any);
   }, [dispatch]);
 
   const hasFilters = actorFilter || actionFilter || typeFilter || fromDate || toDate;
@@ -277,6 +289,16 @@ const AuditLogsPage: React.FC = () => {
             </table>
           )}
         </div>
+
+        {pagination && (
+          <Pagination
+            currentPage={pagination.current_page}
+            totalPages={pagination.total_pages}
+            totalCount={pagination.total_count}
+            perPage={pagination.per_page}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
 
       {selected && <ChangesPanel log={selected} onClose={() => setSelected(null)} />}
