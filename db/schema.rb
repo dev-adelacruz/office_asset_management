@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "asset_status_logs", force: :cascade do |t|
+    t.bigint "asset_id", null: false
+    t.bigint "changed_by_id", null: false
+    t.datetime "created_at", null: false
+    t.string "from_status"
+    t.string "to_status", null: false
+    t.datetime "updated_at", null: false
+    t.index ["asset_id"], name: "index_asset_status_logs_on_asset_id"
+    t.index ["changed_by_id"], name: "index_asset_status_logs_on_changed_by_id"
+    t.index ["created_at"], name: "index_asset_status_logs_on_created_at"
+  end
 
   create_table "assets", force: :cascade do |t|
     t.string "asset_code", null: false
@@ -55,4 +67,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_140000) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
   end
+
+  add_foreign_key "asset_status_logs", "assets"
+  add_foreign_key "asset_status_logs", "users", column: "changed_by_id"
 end

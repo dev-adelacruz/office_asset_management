@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../state/store';
-import { fetchAssets, createAsset, clearCreateError } from '../../state/assets/assetSlice';
+import { fetchAssets, createAsset, clearCreateError, updateAssetStatus, clearUpdateError } from '../../state/assets/assetSlice';
 import AppLayout from '../../components/layout/AppLayout';
 import {
   Package, Plus, AlertCircle, Loader2, X, Hash,
-  DollarSign, MapPin, FileText, CheckCircle, ChevronDown,
+  DollarSign, MapPin, FileText, CheckCircle, ChevronDown, AlertTriangle,
 } from 'lucide-react';
-import { Asset, AssetCategory, AssetCondition } from '../../interfaces/state/assetState';
+import { Asset, AssetCategory, AssetCondition, AssetStatus } from '../../interfaces/state/assetState';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -35,6 +35,7 @@ const STATUS_STYLES: Record<string, string> = {
   assigned:          'bg-blue-50 text-blue-700 border-blue-200',
   under_maintenance: 'bg-amber-50 text-amber-700 border-amber-200',
   retired:           'bg-gray-100 text-gray-500 border-gray-200',
+  lost:              'bg-red-50 text-red-600 border-red-200',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -42,7 +43,11 @@ const STATUS_LABELS: Record<string, string> = {
   assigned:          'Assigned',
   under_maintenance: 'Under Maintenance',
   retired:           'Retired',
+  lost:              'Lost',
 };
+
+const ALL_STATUSES: AssetStatus[] = ['available', 'assigned', 'under_maintenance', 'retired', 'lost'];
+const DESTRUCTIVE_STATUSES: AssetStatus[] = ['retired', 'lost'];
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
 
@@ -82,7 +87,11 @@ const Field: React.FC<{
 
 // ─── Asset table row ──────────────────────────────────────────────────────────
 
-const AssetRow: React.FC<{ asset: Asset }> = ({ asset }) => (
+const AssetRow: React.FC<{
+  asset: Asset;
+  canChangeStatus: boolean;
+  onStatusClick: (asset: Asset) => void;
+}> = ({ asset, canChangeStatus, onStatusClick }) => (
   <tr className="group hover:bg-blue-50/40 transition-colors duration-100">
     <td className="px-5 py-3.5">
       <div className="flex items-center gap-3">
@@ -99,9 +108,20 @@ const AssetRow: React.FC<{ asset: Asset }> = ({ asset }) => (
     <td className="px-5 py-3.5 text-sm text-gray-500 font-mono tracking-wide">{asset.serial_number}</td>
     <td className="px-5 py-3.5 text-sm text-gray-500">{CONDITION_LABELS[asset.condition] ?? asset.condition}</td>
     <td className="px-5 py-3.5">
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[asset.status] ?? ''}`}>
-        {STATUS_LABELS[asset.status] ?? asset.status}
-      </span>
+      {canChangeStatus ? (
+        <button
+          onClick={() => onStatusClick(asset)}
+          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-all duration-150 hover:brightness-95 hover:shadow-sm cursor-pointer ${STATUS_STYLES[asset.status] ?? ''}`}
+          title="Click to change status"
+        >
+          {STATUS_LABELS[asset.status] ?? asset.status}
+          <ChevronDown className="w-3 h-3 opacity-60" />
+        </button>
+      ) : (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[asset.status] ?? ''}`}>
+          {STATUS_LABELS[asset.status] ?? asset.status}
+        </span>
+      )}
     </td>
     <td className="px-5 py-3.5 text-sm text-gray-400">{asset.location ?? '—'}</td>
   </tr>
@@ -341,6 +361,162 @@ const RegisterAssetModal: React.FC<{
   );
 };
 
+// ─── Status change modal ──────────────────────────────────────────────────────
+
+const StatusChangeModal: React.FC<{
+  asset: Asset | null;
+  visible: boolean;
+  onClose: () => void;
+}> = ({ asset, visible, onClose }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { isUpdating, updateError } = useSelector((state: RootState) => state.assets);
+
+  const [selected, setSelected] = useState<AssetStatus | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (visible) { setSelected(null); setConfirming(false); dispatch(clearUpdateError()); }
+  }, [visible, dispatch]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleSelect = (status: AssetStatus) => {
+    setSelected(status);
+    if (DESTRUCTIVE_STATUSES.includes(status)) {
+      setConfirming(true);
+    }
+  };
+
+  const handleApply = async () => {
+    if (!asset || !selected) return;
+    dispatch(clearUpdateError());
+    const result = await dispatch(updateAssetStatus({ assetId: asset.id, status: selected }));
+    if (updateAssetStatus.fulfilled.match(result)) onClose();
+  };
+
+  if (!asset) return null;
+
+  const availableStatuses = ALL_STATUSES.filter((s) => s !== asset.status);
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+          visible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div
+          className={`pointer-events-auto w-full max-w-sm bg-white rounded-2xl shadow-2xl shadow-gray-300/50 border border-gray-100 transition-all duration-200 ${
+            visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
+          }`}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Change Status</h2>
+              <p className="text-xs text-gray-400 mt-0.5 font-mono truncate max-w-50">{asset.name}</p>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-150">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="px-5 py-4 space-y-3">
+            {updateError && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-xs text-red-600">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {updateError}
+              </div>
+            )}
+
+            {!confirming ? (
+              <>
+                <p className="text-xs text-gray-500">Select a new status for this asset:</p>
+                <div className="space-y-2">
+                  {availableStatuses.map((status) => {
+                    const isDestructive = DESTRUCTIVE_STATUSES.includes(status);
+                    return (
+                      <button
+                        key={status}
+                        onClick={() => handleSelect(status)}
+                        disabled={isUpdating}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150 disabled:opacity-50 ${
+                          selected === status
+                            ? `${STATUS_STYLES[status]} border-current`
+                            : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <span>{STATUS_LABELS[status]}</span>
+                        {isDestructive && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 px-3.5 py-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">
+                      Mark as {STATUS_LABELS[selected!]}?
+                    </p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      {selected === 'lost'
+                        ? 'This asset will be removed from active inventory and marked as lost.'
+                        : 'Retired assets are excluded from active inventory counts.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 pb-5 flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => confirming ? setConfirming(false) : onClose()}
+              disabled={isUpdating}
+              className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-150 disabled:opacity-50"
+            >
+              {confirming ? 'Back' : 'Cancel'}
+            </button>
+            {confirming ? (
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={isUpdating}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl bg-amber-500 hover:bg-amber-600 shadow-md shadow-amber-200/60 transition-all duration-150 disabled:opacity-60"
+              >
+                {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Confirm
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={!selected || isUpdating}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-200/60 transition-all duration-150 disabled:opacity-50"
+              >
+                {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Apply
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // ─── Success toast ────────────────────────────────────────────────────────────
 
 const SuccessToast: React.FC<{ message: string; visible: boolean }> = ({ message, visible }) => (
@@ -364,10 +540,16 @@ const AssetsPage: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
 
   const canCreate = user?.role === 'manager' || user?.role === 'executive';
+  const canChangeStatus = canCreate;
 
-  // Modal state — track both mount and visibility separately for CSS transitions
+  // Register modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Status change modal state
+  const [statusModalAsset, setStatusModalAsset] = useState<Asset | null>(null);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
 
   const [toast, setToast] = useState({ visible: false, message: '' });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -386,6 +568,20 @@ const AssetsPage: React.FC = () => {
     prevAssetCount.current = assets.length;
   }, [assets.length]);
 
+  // Detect status update to trigger toast
+  const prevAssetsRef = useRef<Asset[]>([]);
+  useEffect(() => {
+    const prev = prevAssetsRef.current;
+    if (prev.length > 0) {
+      const changed = assets.find((a) => {
+        const old = prev.find((p) => p.id === a.id);
+        return old && old.status !== a.status;
+      });
+      if (changed) showToast(`Status updated to "${STATUS_LABELS[changed.status] ?? changed.status}".`);
+    }
+    prevAssetsRef.current = assets;
+  }, [assets]);
+
   const showToast = (message: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ visible: true, message });
@@ -402,9 +598,21 @@ const AssetsPage: React.FC = () => {
     setTimeout(() => setModalOpen(false), 200);
   };
 
-  // Stats summary
+  const openStatusModal = (asset: Asset) => {
+    setStatusModalAsset(asset);
+    setStatusModalOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setStatusModalVisible(true)));
+  };
+
+  const closeStatusModal = () => {
+    setStatusModalVisible(false);
+    setTimeout(() => { setStatusModalOpen(false); setStatusModalAsset(null); }, 200);
+  };
+
+  // Stats summary — retired and lost excluded from "active" count per AC
+  const activeAssets = assets.filter((a) => a.status !== 'retired' && a.status !== 'lost');
   const stats = [
-    { label: 'Total', value: assets.length, color: 'text-gray-900' },
+    { label: 'Active', value: activeAssets.length, color: 'text-gray-900' },
     { label: 'Available', value: assets.filter((a) => a.status === 'available').length, color: 'text-emerald-600' },
     { label: 'Assigned', value: assets.filter((a) => a.status === 'assigned').length, color: 'text-blue-600' },
     { label: 'Maintenance', value: assets.filter((a) => a.status === 'under_maintenance').length, color: 'text-amber-600' },
@@ -416,6 +624,10 @@ const AssetsPage: React.FC = () => {
 
       {modalOpen && (
         <RegisterAssetModal visible={modalVisible} onClose={closeModal} />
+      )}
+
+      {statusModalOpen && (
+        <StatusChangeModal asset={statusModalAsset} visible={statusModalVisible} onClose={closeStatusModal} />
       )}
 
       <div className="space-y-5">
@@ -485,7 +697,14 @@ const AssetsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {assets.map((asset) => <AssetRow key={asset.id} asset={asset} />)}
+                {assets.map((asset) => (
+                  <AssetRow
+                    key={asset.id}
+                    asset={asset}
+                    canChangeStatus={canChangeStatus}
+                    onStatusClick={openStatusModal}
+                  />
+                ))}
               </tbody>
             </table>
           )}

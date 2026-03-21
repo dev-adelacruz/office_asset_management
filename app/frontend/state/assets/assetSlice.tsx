@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { assetService, CreateAssetParams } from '../../services/assetService';
+import { AssetStatus } from '../../interfaces/state/assetState';
 import { RootState } from '../store';
 
 export const fetchAssets = createAsyncThunk(
@@ -26,18 +27,35 @@ export const createAsset = createAsyncThunk(
   }
 );
 
+export const updateAssetStatus = createAsyncThunk(
+  'assets/updateStatus',
+  async ({ assetId, status }: { assetId: number; status: AssetStatus }, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      return await assetService.updateAssetStatus(assetId, status, token);
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to update asset status');
+    }
+  }
+);
+
 const assetSlice = createSlice({
   name: 'assets',
   initialState: {
     assets: [] as import('../../interfaces/state/assetState').Asset[],
     isLoading: false,
     isCreating: false,
+    isUpdating: false,
     error: null as string | null,
     createError: null as string | null,
+    updateError: null as string | null,
   },
   reducers: {
     clearCreateError: (state) => {
       state.createError = null;
+    },
+    clearUpdateError: (state) => {
+      state.updateError = null;
     },
   },
   extraReducers: (builder) => {
@@ -66,8 +84,22 @@ const assetSlice = createSlice({
       state.isCreating = false;
       state.createError = action.payload as string;
     });
+
+    builder.addCase(updateAssetStatus.pending, (state) => {
+      state.isUpdating = true;
+      state.updateError = null;
+    });
+    builder.addCase(updateAssetStatus.fulfilled, (state, action) => {
+      state.isUpdating = false;
+      const idx = state.assets.findIndex((a) => a.id === action.payload.id);
+      if (idx !== -1) state.assets[idx] = action.payload;
+    });
+    builder.addCase(updateAssetStatus.rejected, (state, action) => {
+      state.isUpdating = false;
+      state.updateError = action.payload as string;
+    });
   },
 });
 
-export const { clearCreateError } = assetSlice.actions;
+export const { clearCreateError, clearUpdateError } = assetSlice.actions;
 export default assetSlice.reducer;
