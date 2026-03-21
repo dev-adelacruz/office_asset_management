@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useAppDispatch } from '../../state/hooks';
 import { Link } from 'react-router-dom';
 import {
   Package,
@@ -142,7 +143,7 @@ const PERIOD_OPTIONS: { value: DashboardPeriod | ''; label: string }[] = [
 // ─── HomePage ─────────────────────────────────────────────────────────────────
 
 const HomePage: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { data, isLoading, error } = useSelector((s: RootState) => s.dashboard);
   const user = useSelector((s: RootState) => s.user.user);
   const isExecutive = user?.role === 'executive';
@@ -157,7 +158,7 @@ const HomePage: React.FC = () => {
   })();
 
   useEffect(() => {
-    dispatch(fetchDashboard(period || undefined) as any);
+    dispatch(fetchDashboard(period || undefined));
   }, [dispatch, period]);
 
   const formatCurrency = (value: number) =>

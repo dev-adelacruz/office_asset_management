@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useAppDispatch } from '../../state/hooks';
 import { fetchAuditLogs } from '../../state/auditLogs/auditLogSlice';
 import { RootState } from '../../state/store';
 import { AuditLog } from '../../interfaces/state/auditLogState';
@@ -113,7 +114,7 @@ const ChangesPanel: React.FC<ChangesPanelProps> = ({ log, onClose }) => {
 // ─── AuditLogsPage ────────────────────────────────────────────────────────────
 
 const AuditLogsPage: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { audit_logs, pagination, isLoading, error } = useSelector((s: RootState) => s.auditLogs);
 
   const [actorFilter, setActorFilter] = useState('');
@@ -135,7 +136,7 @@ const AuditLogsPage: React.FC = () => {
 
   const applyFilters = () => {
     setCurrentPage(1);
-    dispatch(fetchAuditLogs(buildFilters(1)) as any);
+    dispatch(fetchAuditLogs(buildFilters(1)));
   };
 
   const clearFilters = () => {
@@ -145,16 +146,16 @@ const AuditLogsPage: React.FC = () => {
     setFromDate('');
     setToDate('');
     setCurrentPage(1);
-    dispatch(fetchAuditLogs({ page: 1 }) as any);
+    dispatch(fetchAuditLogs({ page: 1 }));
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    dispatch(fetchAuditLogs(buildFilters(page)) as any);
+    dispatch(fetchAuditLogs(buildFilters(page)));
   };
 
   useEffect(() => {
-    dispatch(fetchAuditLogs({ page: 1 }) as any);
+    dispatch(fetchAuditLogs({ page: 1 }));
   }, [dispatch]);
 
   const hasFilters = actorFilter || actionFilter || typeFilter || fromDate || toDate;

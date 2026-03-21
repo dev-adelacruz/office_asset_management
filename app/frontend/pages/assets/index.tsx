@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../state/store';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../state/store';
+import { useAppDispatch } from '../../state/hooks';
 import { fetchAssets, createAsset, clearCreateError, updateAsset, clearEditError, updateAssetStatus, clearUpdateError, fetchAssignmentLogs, assignAsset, recordAssetReturn, clearAssignError, clearReturnError, clearAssignmentLogs } from '../../state/assets/assetSlice';
 import AppLayout from '../../components/layout/AppLayout';
 import Pagination from '../../components/Pagination';
@@ -157,7 +158,7 @@ const RegisterAssetModal: React.FC<{
   visible: boolean;
   onClose: () => void;
 }> = ({ visible, onClose }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { isCreating, createError } = useSelector((state: RootState) => state.assets);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -392,7 +393,7 @@ const EditAssetModal: React.FC<{
   visible: boolean;
   onClose: () => void;
 }> = ({ asset, visible, onClose }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { isEditing, editError } = useSelector((state: RootState) => state.assets);
 
   const [name, setName] = useState('');
@@ -588,7 +589,7 @@ const StatusChangeModal: React.FC<{
   visible: boolean;
   onClose: () => void;
 }> = ({ asset, visible, onClose }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { isUpdating, updateError } = useSelector((state: RootState) => state.assets);
 
   const [selected, setSelected] = useState<AssetStatus | null>(null);
@@ -760,7 +761,7 @@ const AssignmentHistoryDrawer: React.FC<{
   onClose: () => void;
   onAssignClick: () => void;
 }> = ({ asset, canAssign, onClose, onAssignClick }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { assignmentLogs, isFetchingHistory, historyError, isReturning } = useSelector((s: RootState) => s.assets);
   const [visible, setVisible] = useState(false);
 
@@ -864,7 +865,7 @@ const AssignAssetModal: React.FC<{
   asset: Asset;
   onClose: () => void;
 }> = ({ asset, onClose }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { isAssigning, assignError } = useSelector((s: RootState) => s.assets);
   const [visible, setVisible] = useState(false);
   const [assignedToId, setAssignedToId] = useState('');
@@ -885,7 +886,7 @@ const AssignAssetModal: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await (dispatch as any)(assignAsset({
+    const result = await dispatch(assignAsset({
       assetId: asset.id,
       params: {
         assigned_to_id: Number(assignedToId),
@@ -979,7 +980,7 @@ const AssignAssetModal: React.FC<{
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const AssetsPage: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { assets, pagination, isLoading, error } = useSelector((state: RootState) => state.assets);
   const user = useSelector((state: RootState) => state.user.user);
 

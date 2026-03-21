@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useAppDispatch } from '../../state/hooks';
 import {
   fetchLicenses,
   createLicense,
@@ -57,7 +58,7 @@ interface RegisterLicenseModalProps {
 }
 
 const RegisterLicenseModal: React.FC<RegisterLicenseModalProps> = ({ onClose }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { isCreating, createError } = useSelector((s: RootState) => s.licenses);
   const [visible, setVisible] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -96,7 +97,7 @@ const RegisterLicenseModal: React.FC<RegisterLicenseModalProps> = ({ onClose }) 
       ...(form.purchase_order_number && { purchase_order_number: form.purchase_order_number }),
       ...(form.notes && { notes: form.notes }),
     };
-    const result = await dispatch(createLicense(params) as any);
+    const result = await dispatch(createLicense(params));
     if (!result.error) handleClose();
   };
 
@@ -221,7 +222,7 @@ interface EditLicenseModalProps {
 }
 
 const EditLicenseModal: React.FC<EditLicenseModalProps> = ({ license, onClose }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { isEditing, editError } = useSelector((s: RootState) => s.licenses);
   const [visible, setVisible] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -260,7 +261,7 @@ const EditLicenseModal: React.FC<EditLicenseModalProps> = ({ license, onClose })
       purchase_order_number: form.purchase_order_number || undefined,
       notes: form.notes || undefined,
     };
-    const result = await dispatch(updateLicense({ licenseId: license.id, params }) as any);
+    const result = await dispatch(updateLicense({ licenseId: license.id, params }));
     if (!result.error) handleClose();
   };
 
@@ -387,7 +388,7 @@ interface ManageSeatsModalProps {
 }
 
 const ManageSeatsModal: React.FC<ManageSeatsModalProps> = ({ license: initialLicense, onClose }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { isAssigning, seatError } = useSelector((s: RootState) => s.licenses);
   const licenses = useSelector((s: RootState) => s.licenses.licenses);
   const license = licenses.find((l) => l.id === initialLicense.id) ?? initialLicense;
@@ -408,12 +409,12 @@ const ManageSeatsModal: React.FC<ManageSeatsModalProps> = ({ license: initialLic
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput.trim()) return;
-    const result = await dispatch(assignSeat({ licenseId: license.id, userEmail: emailInput.trim() }) as any);
+    const result = await dispatch(assignSeat({ licenseId: license.id, userEmail: emailInput.trim() }));
     if (!result.error) setEmailInput('');
   };
 
   const handleRelease = async (seat: LicenseSeat) => {
-    dispatch(releaseSeat({ licenseId: license.id, seatId: seat.id }) as any);
+    dispatch(releaseSeat({ licenseId: license.id, seatId: seat.id }));
   };
 
   const utilizationPct = license.total_seats > 0
@@ -570,7 +571,7 @@ const SuccessToast: React.FC<SuccessToastProps> = ({ message, onDismiss }) => {
 // ─── LicensesPage ─────────────────────────────────────────────────────────────
 
 const LicensesPage: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { licenses, pagination, isLoading, error } = useSelector((s: RootState) => s.licenses);
   const user = useSelector((s: RootState) => s.user.user);
 
@@ -587,7 +588,7 @@ const LicensesPage: React.FC = () => {
   const canWrite = user?.role === 'manager' || user?.role === 'executive';
 
   useEffect(() => {
-    dispatch(fetchLicenses({ page: currentPage, per_page: 25, q: searchQuery || undefined, status: filterStatus || undefined }) as any);
+    dispatch(fetchLicenses({ page: currentPage, per_page: 25, q: searchQuery || undefined, status: filterStatus || undefined }));
   }, [dispatch, currentPage, searchQuery, filterStatus]);
 
   useEffect(() => {
