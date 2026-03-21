@@ -1,14 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { licenseService, CreateLicenseParams } from '../../services/licenseService';
-import { License } from '../../interfaces/state/licenseState';
+import { licenseService, CreateLicenseParams, FetchLicensesParams } from '../../services/licenseService';
+import { License, LicensePagination } from '../../interfaces/state/licenseState';
 import { RootState } from '../store';
 
 export const fetchLicenses = createAsyncThunk(
   'licenses/fetchAll',
-  async (_, { getState, rejectWithValue }) => {
+  async (params: FetchLicensesParams | undefined, { getState, rejectWithValue }) => {
     try {
       const token = (getState() as RootState).user.token ?? '';
-      return await licenseService.listLicenses(token);
+      return await licenseService.listLicenses(token, params);
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch licenses');
     }
@@ -77,6 +77,7 @@ const licenseSlice = createSlice({
   name: 'licenses',
   initialState: {
     licenses: [] as License[],
+    pagination: null as LicensePagination | null,
     isLoading: false,
     isCreating: false,
     isEditing: false,
@@ -104,7 +105,8 @@ const licenseSlice = createSlice({
     });
     builder.addCase(fetchLicenses.fulfilled, (state, action) => {
       state.isLoading = false;
-      state.licenses = action.payload;
+      state.licenses = action.payload.licenses;
+      state.pagination = action.payload.pagination;
     });
     builder.addCase(fetchLicenses.rejected, (state, action) => {
       state.isLoading = false;

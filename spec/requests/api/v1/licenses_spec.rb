@@ -29,7 +29,12 @@ RSpec.describe 'Licenses' do
         tags 'Licenses'
         security [ bearerAuth: [] ]
 
-        response(200, 'returns all licenses') do
+        parameter name: :page, in: :query, type: :integer, required: false
+        parameter name: :per_page, in: :query, type: :integer, required: false
+        parameter name: :q, in: :query, type: :string, required: false
+        parameter name: :status, in: :query, type: :string, required: false
+
+        response(200, 'returns all licenses with pagination metadata') do
           before do
             create_list(:license, 3)
             sign_in manager
@@ -39,6 +44,10 @@ RSpec.describe 'Licenses' do
             expect(response).to have_http_status :ok
             expect(json_response[:status][:code]).to eq 200
             expect(json_response[:status][:data][:licenses].length).to eq 3
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:total_count]).to eq 3
+            expect(pagination[:current_page]).to eq 1
+            expect(pagination[:per_page]).to eq 25
           end
         end
 
@@ -51,6 +60,56 @@ RSpec.describe 'Licenses' do
           run_test! do |response|
             expect(response).to have_http_status :ok
             expect(json_response[:status][:data][:licenses].length).to eq 2
+            expect(json_response[:status][:data][:pagination][:total_count]).to eq 2
+          end
+        end
+
+        response(200, 'paginates results') do
+          let(:page) { 2 }
+          let(:per_page) { 2 }
+
+          before do
+            create_list(:license, 5)
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:licenses].length).to eq 2
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:current_page]).to eq 2
+            expect(pagination[:total_count]).to eq 5
+            expect(pagination[:total_pages]).to eq 3
+          end
+        end
+
+        response(200, 'filters by search query') do
+          let(:q) { 'Adobe' }
+
+          before do
+            create(:license, software_name: 'Adobe Creative Cloud')
+            create(:license, software_name: 'Slack Pro')
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:licenses].length).to eq 1
+            expect(json_response[:status][:data][:licenses][0][:software_name]).to eq 'Adobe Creative Cloud'
+            expect(json_response[:status][:data][:pagination][:total_count]).to eq 1
+          end
+        end
+
+        response(200, 'filters by status') do
+          let(:status) { 'expired' }
+
+          before do
+            create(:license, expiry_date: Date.today - 10)
+            create(:license, expiry_date: Date.today + 60)
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:licenses].length).to eq 1
+            expect(json_response[:status][:data][:pagination][:total_count]).to eq 1
           end
         end
 

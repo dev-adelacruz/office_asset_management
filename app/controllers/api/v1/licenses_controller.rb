@@ -5,12 +5,27 @@ class Api::V1::LicensesController < Api::BaseController
   before_action :set_license, only: [ :update ]
 
   def index
-    licenses = License.all.order(created_at: :desc)
+    per_page    = params[:per_page].present? ? [ [ params[:per_page].to_i, 1 ].max, 100 ].min : 25
+    page        = params[:page].present? ? [ params[:page].to_i, 1 ].max : 1
+    offset      = (page - 1) * per_page
+    scope       = filtered_licenses
+    total       = scope.count
+    licenses    = scope.order(created_at: :desc).limit(per_page).offset(offset)
+    total_pages = (total.to_f / per_page).ceil
+
     render json: {
       status: {
         code: 200,
         message: "Licenses retrieved successfully.",
-        data: { licenses: LicenseBlueprint.render_as_hash(licenses) }
+        data: {
+          licenses: LicenseBlueprint.render_as_hash(licenses),
+          pagination: {
+            current_page: page,
+            total_pages: total_pages,
+            total_count: total,
+            per_page: per_page
+          }
+        }
       }
     }, status: :ok
   end
@@ -52,6 +67,31 @@ class Api::V1::LicensesController < Api::BaseController
   end
 
   private
+
+  def filtered_licenses
+    scope = License.all
+
+    if params[:q].present?
+      q = "%#{params[:q]}%"
+      scope = scope.where("software_name ILIKE ? OR vendor ILIKE ? OR purchase_order_number ILIKE ?", q, q, q)
+    end
+
+    if params[:status].present?
+      today = Date.today
+      scope = case params[:status]
+      when "expired"
+                scope.where("expiry_date < ?", today)
+      when "expiring_soon"
+                scope.where("expiry_date >= ? AND expiry_date <= ?", today, today + 30)
+      when "active"
+                scope.where("expiry_date > ?", today + 30)
+      else
+                scope
+      end
+    end
+
+    scope
+  end
 
   def set_license
     @license = License.find(params[:id])
