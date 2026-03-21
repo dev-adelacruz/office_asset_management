@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { assetRequestService, CreateAssetRequestParams } from '../../services/assetRequestService';
-import { AssetRequest } from '../../interfaces/state/assetRequestState';
+import { AssetRequest, AssetRequestWithTimeline } from '../../interfaces/state/assetRequestState';
 import { RootState } from '../store';
 
 export const fetchAssetRequests = createAsyncThunk(
@@ -11,6 +11,18 @@ export const fetchAssetRequests = createAsyncThunk(
       return await assetRequestService.listAssetRequests(token);
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch asset requests');
+    }
+  }
+);
+
+export const fetchAssetRequest = createAsyncThunk(
+  'assetRequests/fetchOne',
+  async (id: number, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      return await assetRequestService.getAssetRequest(id, token);
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch asset request');
     }
   }
 );
@@ -46,10 +58,13 @@ const assetRequestSlice = createSlice({
   name: 'assetRequests',
   initialState: {
     requests: [] as AssetRequest[],
+    currentRequest: null as AssetRequestWithTimeline | null,
     isLoading: false,
+    isFetchingTimeline: false,
     isCreating: false,
     isUpdating: false,
     error: null as string | null,
+    timelineError: null as string | null,
     createError: null as string | null,
     updateError: null as string | null,
   },
@@ -59,6 +74,10 @@ const assetRequestSlice = createSlice({
     },
     clearUpdateError: (state) => {
       state.updateError = null;
+    },
+    clearCurrentRequest: (state) => {
+      state.currentRequest = null;
+      state.timelineError = null;
     },
   },
   extraReducers: (builder) => {
@@ -88,6 +107,19 @@ const assetRequestSlice = createSlice({
       state.createError = action.payload as string;
     });
 
+    builder.addCase(fetchAssetRequest.pending, (state) => {
+      state.isFetchingTimeline = true;
+      state.timelineError = null;
+    });
+    builder.addCase(fetchAssetRequest.fulfilled, (state, action) => {
+      state.isFetchingTimeline = false;
+      state.currentRequest = action.payload;
+    });
+    builder.addCase(fetchAssetRequest.rejected, (state, action) => {
+      state.isFetchingTimeline = false;
+      state.timelineError = action.payload as string;
+    });
+
     builder.addCase(updateAssetRequest.pending, (state) => {
       state.isUpdating = true;
       state.updateError = null;
@@ -104,5 +136,5 @@ const assetRequestSlice = createSlice({
   },
 });
 
-export const { clearCreateError, clearUpdateError } = assetRequestSlice.actions;
+export const { clearCreateError, clearUpdateError, clearCurrentRequest } = assetRequestSlice.actions;
 export default assetRequestSlice.reducer;

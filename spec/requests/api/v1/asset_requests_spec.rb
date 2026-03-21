@@ -95,6 +95,7 @@ RSpec.describe 'Asset Requests' do
             expect(data[:urgency]).to eq 'high'
             expect(data[:status]).to eq 'pending'
             expect(data[:user][:id]).to eq employee.id
+            expect(AssetRequestStatusLog.where(to_status: 'pending').count).to eq 1
           end
         end
 
@@ -148,6 +149,69 @@ RSpec.describe 'Asset Requests' do
 
         response(401, 'unauthenticated') do
           let(:body) { valid_params }
+
+          run_test! do |response|
+            expect(response).to have_http_status :unauthorized
+          end
+        end
+      end
+    end
+  end
+
+  describe '#show' do
+    let(:request_with_logs) { create(:asset_request, user: employee) }
+
+    before do
+      request_with_logs.asset_request_status_logs.create!(
+        changed_by: employee,
+        from_status: nil,
+        to_status: 'pending'
+      )
+    end
+
+    path '/api/v1/asset_requests/{id}' do
+      get 'returns a single asset request with timeline' do
+        tags 'Asset Requests'
+        security [ bearerAuth: [] ]
+        parameter name: :id, in: :path, type: :integer
+
+        response(200, 'employee views their own request timeline') do
+          let(:id) { request_with_logs.id }
+          before { sign_in employee }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            data = json_response[:status][:data][:asset_request]
+            expect(data[:id]).to eq request_with_logs.id
+            expect(data[:status_logs]).to be_an Array
+            expect(data[:status_logs].length).to eq 1
+            expect(data[:status_logs][0][:to_status]).to eq 'pending'
+            expect(data[:status_logs][0][:from_status]).to be_nil
+            expect(data[:status_logs][0][:changed_by][:id]).to eq employee.id
+          end
+        end
+
+        response(200, 'manager views any request timeline') do
+          let(:id) { request_with_logs.id }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(json_response[:status][:data][:asset_request][:status_logs]).to be_an Array
+          end
+        end
+
+        response(404, 'request not found') do
+          let(:id) { 0 }
+          before { sign_in employee }
+
+          run_test! do |response|
+            expect(response).to have_http_status :not_found
+          end
+        end
+
+        response(401, 'unauthenticated') do
+          let(:id) { request_with_logs.id }
 
           run_test! do |response|
             expect(response).to have_http_status :unauthorized
