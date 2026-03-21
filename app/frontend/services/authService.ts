@@ -10,6 +10,10 @@ export interface AuthResponse {
     id: number;
     email: string;
     role: string;
+    name: string | null;
+    phone_number: string | null;
+    office_location: string | null;
+    avatar_url: string | null;
   };
   expires_in?: number;
 }

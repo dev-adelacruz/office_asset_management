@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../state/user/userSlice';
 import { RootState } from '../../state/store';
 import {
@@ -51,25 +52,28 @@ const statCards = [
   },
 ];
 
-const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, active: true },
-  { label: 'Profile', icon: User, active: false },
-  { label: 'Settings', icon: Settings, active: false },
-];
-
 const HomePage: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.user.user);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const navItems = [
+    { label: 'Dashboard', icon: LayoutDashboard, active: true, onClick: () => {} },
+    { label: 'Profile', icon: User, active: false, onClick: () => navigate('/profile') },
+    { label: 'Settings', icon: Settings, active: false, onClick: () => {} },
+  ];
 
   const handleLogout = () => {
     dispatch(logoutUser() as any);
   };
 
-  const initials = user?.email
-    ? user.email.slice(0, 2).toUpperCase()
-    : 'U';
+  const initials = user?.name
+    ? user.name.slice(0, 2).toUpperCase()
+    : user?.email?.slice(0, 2).toUpperCase() ?? 'U';
+
+  const displayName = user?.name ?? user?.email ?? '';
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric',
@@ -99,11 +103,11 @@ const HomePage: React.FC = () => {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-5 space-y-1">
-          {navItems.map(({ label, icon: Icon, active }) => (
-            <a
+          {navItems.map(({ label, icon: Icon, active, onClick }) => (
+            <button
               key={label}
-              href="#"
-              className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
+              onClick={onClick}
+              className={`flex items-center w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
                 active
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40'
                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
@@ -111,7 +115,7 @@ const HomePage: React.FC = () => {
             >
               <Icon className="w-4.5 h-4.5 mr-3 shrink-0" />
               {label}
-            </a>
+            </button>
           ))}
         </nav>
 
@@ -142,8 +146,8 @@ const HomePage: React.FC = () => {
                   {initials}
                 </div>
                 <div className="flex flex-col items-start min-w-0">
-                  <span className="text-sm font-medium text-gray-700 max-w-[140px] truncate leading-tight">{user?.email}</span>
-                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-px rounded-full leading-tight tracking-wide">Administrator</span>
+                  <span className="text-sm font-medium text-gray-700 max-w-[140px] truncate leading-tight">{displayName}</span>
+                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-px rounded-full leading-tight tracking-wide capitalize">{user?.role}</span>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-150 ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -154,12 +158,18 @@ const HomePage: React.FC = () => {
                   {/* Account info header */}
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-xs text-gray-400">Signed in as</p>
-                    <p className="text-sm font-medium text-gray-800 truncate">{user?.email}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">{displayName}</p>
+                    {user?.office_location && (
+                      <p className="text-xs text-gray-400 truncate">{user.office_location}</p>
+                    )}
                   </div>
 
                   {/* Menu items */}
                   <div className="py-1">
-                    <button className="flex items-center w-full gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
+                    <button
+                      onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
+                      className="flex items-center w-full gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                    >
                       <User className="w-4 h-4 text-gray-400 shrink-0" />
                       Profile
                     </button>

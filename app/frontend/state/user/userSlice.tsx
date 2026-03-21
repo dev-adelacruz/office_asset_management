@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { authService } from '../../services/authService';
+import { profileService, ProfileParams } from '../../services/profileService';
 import { tokenStorage } from '../../services/tokenStorage';
 
 // Async thunks for authentication
@@ -54,12 +55,29 @@ export const checkAuthStatus = createAsyncThunk(
   }
 );
 
+export const updateProfile = createAsyncThunk(
+  'user/updateProfile',
+  async (params: ProfileParams, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { user: UserState };
+      const token = state.user.token;
+      if (!token) throw new Error('Not authenticated');
+      const { user } = await profileService.updateProfile(params, token);
+      return user;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Profile update failed');
+    }
+  }
+);
+
 const initialState: UserState = {
   isSignedIn: false,
   token: null,
   user: null,
   isLoading: false,
-  error: null
+  isUpdatingProfile: false,
+  error: null,
+  profileError: null,
 };
 
 const userSlice = createSlice({
@@ -132,6 +150,21 @@ const userSlice = createSlice({
     builder.addCase(checkAuthStatus.rejected, (state, action) => {
       state.isLoading = false
       state.error = action.payload as string
+    })
+
+    // Update profile cases
+    builder.addCase(updateProfile.pending, (state) => {
+      state.isUpdatingProfile = true
+      state.profileError = null
+    })
+    builder.addCase(updateProfile.fulfilled, (state, action) => {
+      state.isUpdatingProfile = false
+      state.user = action.payload
+      state.profileError = null
+    })
+    builder.addCase(updateProfile.rejected, (state, action) => {
+      state.isUpdatingProfile = false
+      state.profileError = action.payload as string
     })
   }
 })
