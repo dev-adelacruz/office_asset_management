@@ -9,7 +9,7 @@ export interface AuthResponse {
   user: {
     id: number;
     email: string;
-    // Add other user fields as needed
+    role: string;
   };
   expires_in?: number;
 }
@@ -37,8 +37,11 @@ class AuthService {
         throw new Error(errorData.message || `Login failed with status ${response.status}`);
       }
 
-      const data: AuthResponse = await response.json();
-      return data;
+      const token = response.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
+      const data = await response.json();
+      const user = data.status?.data?.user;
+
+      return { token, user };
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(error.message);
@@ -66,7 +69,7 @@ class AuthService {
     }
   }
 
-  async validateToken(token: string): Promise<boolean> {
+  async validateToken(token: string): Promise<{ valid: boolean; user?: AuthResponse['user'] }> {
     try {
       const response = await fetch(`${this.baseURL}/users/validate_token`, {
         method: 'GET',
@@ -76,15 +79,16 @@ class AuthService {
         },
       });
 
-      console.log('Token validation response status:', response.status);
       if (!response.ok) {
-        console.log('Token validation failed with status:', response.status);
-        return false;
+        return { valid: false };
       }
-      return true;
+
+      const data = await response.json();
+      const user = data.status?.data?.user;
+      return { valid: true, user };
     } catch (error) {
       console.error('Token validation error:', error);
-      return false;
+      return { valid: false };
     }
   }
 
