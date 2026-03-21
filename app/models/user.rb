@@ -12,6 +12,7 @@ class User < ApplicationRecord
   enum :role, { executive: "executive", manager: "manager", employee: "employee" }, default: "employee"
 
   has_many :asset_requests, dependent: :destroy
+  has_many :notifications, dependent: :destroy
 
   validates :email, presence: true
   validates :role, presence: true

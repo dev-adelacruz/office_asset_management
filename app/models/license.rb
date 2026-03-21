@@ -12,6 +12,7 @@ class License < ApplicationRecord
 
   has_many :license_seats, dependent: :destroy
   has_many :users, through: :license_seats
+  has_many :notifications, as: :notifiable, dependent: :destroy
 
   def seats_used
     license_seats.count

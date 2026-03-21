@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_200002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -108,6 +108,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_200000) do
     t.date "expiry_date", null: false
     t.text "license_key", null: false
     t.text "notes"
+    t.boolean "notify_at_30_days", default: true, null: false
+    t.boolean "notify_at_60_days", default: true, null: false
+    t.boolean "notify_at_7_days", default: true, null: false
     t.string "purchase_order_number"
     t.string "renewal_contact"
     t.string "software_name", null: false
@@ -115,6 +118,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_200000) do
     t.datetime "updated_at", null: false
     t.string "vendor", null: false
     t.index ["expiry_date"], name: "index_licenses_on_expiry_date"
+  end
+
+  create_table "notifications", force: :cascade do |t|
+    t.string "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "notifiable_id", null: false
+    t.string "notifiable_type", null: false
+    t.string "notification_type", null: false
+    t.datetime "read_at"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["notifiable_type", "notifiable_id", "notification_type"], name: "idx_notifications_on_notifiable_and_type"
+    t.index ["notifiable_type", "notifiable_id"], name: "index_notifications_on_notifiable"
+    t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
+    t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -147,4 +166,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_200000) do
   add_foreign_key "asset_status_logs", "users", column: "changed_by_id"
   add_foreign_key "license_seats", "licenses"
   add_foreign_key "license_seats", "users"
+  add_foreign_key "notifications", "users"
 end

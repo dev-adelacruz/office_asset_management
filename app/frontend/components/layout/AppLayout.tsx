@@ -2,10 +2,12 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutUser } from '../../state/user/userSlice';
+import { fetchNotifications, markNotificationRead } from '../../state/notifications/notificationSlice';
 import { RootState } from '../../state/store';
 import {
   LayoutDashboard, User, Settings, LogOut, Bell,
   ChevronDown, Zap, Package, ShieldCheck, ClipboardList,
+  AlertTriangle, X,
 } from 'lucide-react';
 
 interface AppLayoutProps {
@@ -27,8 +29,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector((state: RootState) => state.user.user);
+  const { notifications, unread_count } = useSelector((state: RootState) => state.notifications);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     dispatch(logoutUser() as any);
@@ -41,14 +46,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
   const displayName = user?.name ?? user?.email ?? '';
 
   useEffect(() => {
+    dispatch(fetchNotifications() as any);
+  }, [dispatch]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleMarkRead = (id: number) => {
+    dispatch(markNotificationRead(id) as any);
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -93,10 +109,66 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
           </div>
           <div className="flex items-center gap-4">
             {/* Notification bell */}
-            <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-            </button>
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen((prev) => !prev)}
+                className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150"
+              >
+                <Bell className="w-5 h-5" />
+                {unread_count > 0 && (
+                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-red-500 rounded-full ring-2 ring-white flex items-center justify-center text-[10px] font-bold text-white leading-none">
+                    {unread_count > 9 ? '9+' : unread_count}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-lg shadow-gray-200/60 overflow-hidden z-50">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-800">Notifications</p>
+                    {unread_count > 0 && (
+                      <span className="text-xs text-blue-600 font-medium">{unread_count} unread</span>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-gray-400">
+                        No notifications yet
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`flex items-start gap-3 px-4 py-3 transition-colors ${
+                            n.read ? 'bg-white' : 'bg-amber-50/60'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            <AlertTriangle className={`w-4 h-4 ${n.read ? 'text-gray-300' : 'text-amber-500'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-semibold leading-tight ${n.read ? 'text-gray-500' : 'text-gray-800'}`}>
+                              {n.title}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5 leading-snug">{n.body}</p>
+                          </div>
+                          {!n.read && (
+                            <button
+                              onClick={() => handleMarkRead(n.id)}
+                              className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                              title="Mark as read"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* User pill + dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -108,7 +180,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
                   {initials}
                 </div>
                 <div className="flex flex-col items-start min-w-0">
-                  <span className="text-sm font-medium text-gray-700 max-w-[140px] truncate leading-tight">{displayName}</span>
+                  <span className="text-sm font-medium text-gray-700 max-w-35 truncate leading-tight">{displayName}</span>
                   <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-px rounded-full leading-tight tracking-wide capitalize">{user?.role}</span>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-150 ${dropdownOpen ? 'rotate-180' : ''}`} />

@@ -28,6 +28,9 @@ export interface License {
   renewal_contact: string | null;
   purchase_order_number: string | null;
   notes: string | null;
+  notify_at_60_days: boolean;
+  notify_at_30_days: boolean;
+  notify_at_7_days: boolean;
   created_at: string;
   updated_at: string;
 }

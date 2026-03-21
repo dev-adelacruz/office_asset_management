@@ -5,6 +5,7 @@ class LicenseBlueprint < Blueprinter::Base
 
   fields :software_name, :vendor, :license_key, :total_seats, :cost,
          :expiry_date, :renewal_contact, :purchase_order_number, :notes,
+         :notify_at_60_days, :notify_at_30_days, :notify_at_7_days,
          :created_at, :updated_at
 
   field :status do |license|
