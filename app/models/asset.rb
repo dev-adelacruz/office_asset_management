@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Asset < ApplicationRecord
+  include Auditable
   enum :category, {
     laptop: "laptop",
     monitor: "monitor",

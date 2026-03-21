@@ -7,7 +7,7 @@ import { RootState } from '../../state/store';
 import {
   LayoutDashboard, User, Settings, LogOut, Bell,
   ChevronDown, Zap, Package, ShieldCheck, ClipboardList,
-  AlertTriangle, X,
+  AlertTriangle, X, ScrollText,
 } from 'lucide-react';
 
 interface AppLayoutProps {
@@ -16,12 +16,13 @@ interface AppLayoutProps {
 }
 
 const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-  { label: 'Assets', icon: Package, path: '/assets' },
-  { label: 'Licenses', icon: ShieldCheck, path: '/licenses' },
-  { label: 'Requests', icon: ClipboardList, path: '/requests' },
-  { label: 'Profile', icon: User, path: '/profile' },
-  { label: 'Settings', icon: Settings, path: '/settings' },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/', roles: null },
+  { label: 'Assets', icon: Package, path: '/assets', roles: null },
+  { label: 'Licenses', icon: ShieldCheck, path: '/licenses', roles: null },
+  { label: 'Requests', icon: ClipboardList, path: '/requests', roles: null },
+  { label: 'Audit Log', icon: ScrollText, path: '/audit-logs', roles: ['executive'] },
+  { label: 'Profile', icon: User, path: '/profile', roles: null },
+  { label: 'Settings', icon: Settings, path: '/settings', roles: null },
 ];
 
 const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
@@ -80,7 +81,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-5 space-y-1">
-          {navItems.map(({ label, icon: Icon, path }) => {
+          {navItems.filter(({ roles }) => !roles || roles.includes(user?.role ?? '')).map(({ label, icon: Icon, path }) => {
             const active = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
             return (
               <button
