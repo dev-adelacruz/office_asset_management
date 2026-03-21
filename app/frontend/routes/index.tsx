@@ -4,6 +4,7 @@ import HomePage from '../pages/home';
 import LoginPage from '../pages/login';
 import ProfilePage from '../pages/profile';
 import AssetsPage from '../pages/assets';
+import LicensesPage from '../pages/licenses';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 const AppRoutes: React.FC = () => {
@@ -23,6 +24,11 @@ const AppRoutes: React.FC = () => {
         <Route path='/assets' element={
           <ProtectedRoute>
             <AssetsPage/>
+          </ProtectedRoute>
+        } />
+        <Route path='/licenses' element={
+          <ProtectedRoute>
+            <LicensesPage/>
           </ProtectedRoute>
         } />
         <Route path='/login' element={<LoginPage/>} />
