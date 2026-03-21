@@ -6,4 +6,5 @@ namespace :v1 do
   draw(:assets)
   draw(:licenses)
   draw(:asset_requests)
+  draw(:notifications)
 end

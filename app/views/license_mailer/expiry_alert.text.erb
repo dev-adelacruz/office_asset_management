@@ -1,0 +1,17 @@
+License Expiry Alert
+
+Hi <%= @user.name.presence || @user.email %>,
+
+The following software license is expiring in <%= @days_remaining %> days:
+
+  Software:    <%= @license.software_name %>
+  Vendor:      <%= @license.vendor %>
+  Expiry Date: <%= @license.expiry_date.strftime('%B %d, %Y') %>
+<% if @license.renewal_contact.present? %>
+  Renewal Contact: <%= @license.renewal_contact %>
+<% end %>
+
+Please renew this license to avoid service interruption.
+
+--
+Office Asset Management
