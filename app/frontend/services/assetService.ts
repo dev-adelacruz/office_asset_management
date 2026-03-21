@@ -54,6 +54,25 @@ class AssetService {
     return data.status?.data?.asset;
   }
 
+  async updateAsset(assetId: number, params: Partial<CreateAssetParams>, token: string): Promise<Asset> {
+    const response = await fetch(`${this.baseURL}/assets/${assetId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ asset: params }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to update asset (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.asset;
+  }
+
   async updateAssetStatus(assetId: number, status: AssetStatus, token: string): Promise<Asset> {
     const response = await fetch(`${this.baseURL}/assets/${assetId}/status`, {
       method: 'PATCH',

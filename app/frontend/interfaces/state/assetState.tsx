@@ -25,8 +25,10 @@ interface AssetState {
   assets: Asset[];
   isLoading: boolean;
   isCreating: boolean;
+  isEditing: boolean;
   isUpdating: boolean;
   error: string | null;
   createError: string | null;
+  editError: string | null;
   updateError: string | null;
 }

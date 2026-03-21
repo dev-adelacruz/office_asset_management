@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::AssetsController < Api::BaseController
-  before_action :require_manager_or_executive!, only: [ :create ]
+  before_action :require_manager_or_executive!, only: [ :create, :update ]
+  before_action :set_asset, only: [ :update ]
 
   def index
     assets = Asset.all.order(created_at: :desc)
@@ -33,10 +34,33 @@ class Api::V1::AssetsController < Api::BaseController
     end
   end
 
+  def update
+    if @asset.update(asset_params)
+      render json: {
+        status: {
+          code: 200,
+          message: "Asset updated successfully.",
+          data: { asset: AssetBlueprint.render_as_hash(@asset) }
+        }
+      }, status: :ok
+    else
+      render json: {
+        status: 422,
+        message: @asset.errors.full_messages.join(", ")
+      }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def require_manager_or_executive!
     authorize_role!(:manager, :executive)
+  end
+
+  def set_asset
+    @asset = Asset.find(params[:id])
+  rescue ActiveRecord::RecordNotFound
+    render json: { status: 404, message: "Asset not found." }, status: :not_found
   end
 
   def asset_params

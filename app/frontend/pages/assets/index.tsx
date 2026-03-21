@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../state/store';
-import { fetchAssets, createAsset, clearCreateError, updateAssetStatus, clearUpdateError } from '../../state/assets/assetSlice';
+import { fetchAssets, createAsset, clearCreateError, updateAsset, clearEditError, updateAssetStatus, clearUpdateError } from '../../state/assets/assetSlice';
 import AppLayout from '../../components/layout/AppLayout';
 import {
   Package, Plus, AlertCircle, Loader2, X, Hash,
-  DollarSign, MapPin, FileText, CheckCircle, ChevronDown, AlertTriangle,
+  DollarSign, MapPin, FileText, CheckCircle, ChevronDown, AlertTriangle, Pencil,
 } from 'lucide-react';
 import { Asset, AssetCategory, AssetCondition, AssetStatus } from '../../interfaces/state/assetState';
 
@@ -91,7 +91,8 @@ const AssetRow: React.FC<{
   asset: Asset;
   canChangeStatus: boolean;
   onStatusClick: (asset: Asset) => void;
-}> = ({ asset, canChangeStatus, onStatusClick }) => (
+  onEditClick: (asset: Asset) => void;
+}> = ({ asset, canChangeStatus, onStatusClick, onEditClick }) => (
   <tr className="group hover:bg-blue-50/40 transition-colors duration-100">
     <td className="px-5 py-3.5">
       <div className="flex items-center gap-3">
@@ -124,6 +125,17 @@ const AssetRow: React.FC<{
       )}
     </td>
     <td className="px-5 py-3.5 text-sm text-gray-400">{asset.location ?? '—'}</td>
+    <td className="px-5 py-3.5">
+      {canChangeStatus && (
+        <button
+          onClick={() => onEditClick(asset)}
+          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors duration-150"
+          title="Edit asset"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </td>
   </tr>
 );
 
@@ -361,6 +373,202 @@ const RegisterAssetModal: React.FC<{
   );
 };
 
+// ─── Edit asset modal ─────────────────────────────────────────────────────────
+
+const EditAssetModal: React.FC<{
+  asset: Asset | null;
+  visible: boolean;
+  onClose: () => void;
+}> = ({ asset, visible, onClose }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { isEditing, editError } = useSelector((state: RootState) => state.assets);
+
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState<AssetCategory>('laptop');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [purchaseCost, setPurchaseCost] = useState('');
+  const [condition, setCondition] = useState<AssetCondition>('brand_new');
+  const [manufacturer, setManufacturer] = useState('');
+  const [model, setModel] = useState('');
+  const [warrantyExpiry, setWarrantyExpiry] = useState('');
+  const [location, setLocation] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // Pre-fill from asset whenever it changes
+  useEffect(() => {
+    if (asset) {
+      setName(asset.name);
+      setCategory(asset.category);
+      setSerialNumber(asset.serial_number);
+      setPurchaseDate(asset.purchase_date);
+      setPurchaseCost(String(asset.purchase_cost));
+      setCondition(asset.condition);
+      setManufacturer(asset.manufacturer ?? '');
+      setModel(asset.model ?? '');
+      setWarrantyExpiry(asset.warranty_expiry ?? '');
+      setLocation(asset.location ?? '');
+      setNotes(asset.notes ?? '');
+      dispatch(clearEditError());
+    }
+  }, [asset, dispatch]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!asset) return;
+    dispatch(clearEditError());
+
+    const result = await dispatch(updateAsset({
+      assetId: asset.id,
+      params: {
+        name,
+        category,
+        serial_number: serialNumber,
+        purchase_date: purchaseDate,
+        purchase_cost: parseFloat(purchaseCost),
+        condition,
+        ...(manufacturer && { manufacturer }),
+        ...(model && { model }),
+        ...(warrantyExpiry && { warranty_expiry: warrantyExpiry }),
+        ...(location && { location }),
+        ...(notes && { notes }),
+      },
+    }));
+
+    if (updateAsset.fulfilled.match(result)) onClose();
+  };
+
+  if (!asset) return null;
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+          visible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div
+          className={`pointer-events-auto w-full max-w-2xl bg-white rounded-2xl shadow-2xl shadow-gray-300/50 border border-gray-100 transition-all duration-200 ${
+            visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
+          }`}
+          style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+        >
+          <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Edit Asset</h2>
+              <p className="text-xs text-gray-400 mt-0.5 font-mono">{asset.asset_code}</p>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-150">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
+            <div className="px-6 py-5 space-y-5">
+              {editError && (
+                <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {editError}
+                </div>
+              )}
+
+              <div>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Required</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Asset name" icon={<Package className="w-4 h-4" />} required span>
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} required disabled={isEditing} className={inputClass} />
+                  </Field>
+
+                  <Field label="Category" icon={<Package className="w-4 h-4" />} required>
+                    <select value={category} onChange={(e) => setCategory(e.target.value as AssetCategory)} disabled={isEditing} className={selectClass}>
+                      {CATEGORIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  </Field>
+
+                  <Field label="Condition" icon={<Package className="w-4 h-4" />} required>
+                    <select value={condition} onChange={(e) => setCondition(e.target.value as AssetCondition)} disabled={isEditing} className={selectClass}>
+                      {CONDITIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  </Field>
+
+                  <Field label="Serial number" icon={<Hash className="w-4 h-4" />} required span>
+                    <input type="text" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} required disabled={isEditing} className={inputClass} />
+                  </Field>
+
+                  <Field label="Purchase date" icon={<Package className="w-4 h-4" />} required>
+                    <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} required disabled={isEditing} className={inputClass} />
+                  </Field>
+
+                  <Field label="Purchase cost (₱)" icon={<DollarSign className="w-4 h-4" />} required>
+                    <input type="number" value={purchaseCost} onChange={(e) => setPurchaseCost(e.target.value)} min="0" step="0.01" required disabled={isEditing} className={inputClass} />
+                  </Field>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Optional</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Manufacturer" icon={<Package className="w-4 h-4" />}>
+                    <input type="text" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} disabled={isEditing} className={inputClass} />
+                  </Field>
+
+                  <Field label="Model" icon={<Package className="w-4 h-4" />}>
+                    <input type="text" value={model} onChange={(e) => setModel(e.target.value)} disabled={isEditing} className={inputClass} />
+                  </Field>
+
+                  <Field label="Warranty expiry" icon={<Package className="w-4 h-4" />}>
+                    <input type="date" value={warrantyExpiry} onChange={(e) => setWarrantyExpiry(e.target.value)} disabled={isEditing} className={inputClass} />
+                  </Field>
+
+                  <Field label="Location" icon={<MapPin className="w-4 h-4" />}>
+                    <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} disabled={isEditing} className={inputClass} />
+                  </Field>
+
+                  <Field label="Notes" icon={<FileText className="w-4 h-4" />} span>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={2}
+                      disabled={isEditing}
+                      className="w-full pl-10 pr-4 py-2.5 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all duration-150 disabled:opacity-50 placeholder:text-gray-400 resize-none"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0 bg-gray-50/60 rounded-b-2xl">
+              <button type="button" onClick={onClose} disabled={isEditing} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-150 disabled:opacity-50">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isEditing}
+                className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-200/60 transition-all duration-150 disabled:opacity-60"
+              >
+                {isEditing ? (
+                  <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Saving…</>
+                ) : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // ─── Status change modal ──────────────────────────────────────────────────────
 
 const StatusChangeModal: React.FC<{
@@ -546,6 +754,11 @@ const AssetsPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Edit modal state
+  const [editModalAsset, setEditModalAsset] = useState<Asset | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+
   // Status change modal state
   const [statusModalAsset, setStatusModalAsset] = useState<Asset | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -568,16 +781,22 @@ const AssetsPage: React.FC = () => {
     prevAssetCount.current = assets.length;
   }, [assets.length]);
 
-  // Detect status update to trigger toast
+  // Detect asset edit to trigger toast
   const prevAssetsRef = useRef<Asset[]>([]);
   useEffect(() => {
     const prev = prevAssetsRef.current;
     if (prev.length > 0) {
-      const changed = assets.find((a) => {
+      const statusChanged = assets.find((a) => {
         const old = prev.find((p) => p.id === a.id);
         return old && old.status !== a.status;
       });
-      if (changed) showToast(`Status updated to "${STATUS_LABELS[changed.status] ?? changed.status}".`);
+      if (statusChanged) showToast(`Status updated to "${STATUS_LABELS[statusChanged.status] ?? statusChanged.status}".`);
+
+      const detailsChanged = assets.find((a) => {
+        const old = prev.find((p) => p.id === a.id);
+        return old && old.status === a.status && old.updated_at !== a.updated_at;
+      });
+      if (detailsChanged) showToast('Asset details updated successfully.');
     }
     prevAssetsRef.current = assets;
   }, [assets]);
@@ -596,6 +815,17 @@ const AssetsPage: React.FC = () => {
   const closeModal = () => {
     setModalVisible(false);
     setTimeout(() => setModalOpen(false), 200);
+  };
+
+  const openEditModal = (asset: Asset) => {
+    setEditModalAsset(asset);
+    setEditModalOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setEditModalVisible(true)));
+  };
+
+  const closeEditModal = () => {
+    setEditModalVisible(false);
+    setTimeout(() => { setEditModalOpen(false); setEditModalAsset(null); }, 200);
   };
 
   const openStatusModal = (asset: Asset) => {
@@ -624,6 +854,10 @@ const AssetsPage: React.FC = () => {
 
       {modalOpen && (
         <RegisterAssetModal visible={modalVisible} onClose={closeModal} />
+      )}
+
+      {editModalOpen && (
+        <EditAssetModal asset={editModalAsset} visible={editModalVisible} onClose={closeEditModal} />
       )}
 
       {statusModalOpen && (
@@ -694,6 +928,7 @@ const AssetsPage: React.FC = () => {
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Condition</th>
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Status</th>
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Location</th>
+                  <th className="px-5 py-3.5 bg-gray-50/80" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -703,6 +938,7 @@ const AssetsPage: React.FC = () => {
                     asset={asset}
                     canChangeStatus={canChangeStatus}
                     onStatusClick={openStatusModal}
+                    onEditClick={openEditModal}
                   />
                 ))}
               </tbody>
