@@ -25,16 +25,19 @@ RSpec.describe 'Asset Requests' do
         tags 'Asset Requests'
         security [ bearerAuth: [] ]
 
-        response(200, 'manager sees all requests') do
+        response(200, 'manager sees all requests sorted by urgency') do
           before do
-            create_list(:asset_request, 3)
+            create(:asset_request, urgency: 'low')
+            create(:asset_request, urgency: 'high')
+            create(:asset_request, urgency: 'medium')
             sign_in manager
           end
 
           run_test! do |response|
             expect(response).to have_http_status :ok
             expect(json_response[:status][:code]).to eq 200
-            expect(json_response[:status][:data][:asset_requests].length).to eq 3
+            urgencies = json_response[:status][:data][:asset_requests].map { |r| r[:urgency] }
+            expect(urgencies).to eq %w[high medium low]
           end
         end
 
@@ -145,6 +148,96 @@ RSpec.describe 'Asset Requests' do
 
         response(401, 'unauthenticated') do
           let(:body) { valid_params }
+
+          run_test! do |response|
+            expect(response).to have_http_status :unauthorized
+          end
+        end
+      end
+    end
+  end
+
+  describe '#update' do
+    let(:pending_request) { create(:asset_request, user: employee) }
+
+    path '/api/v1/asset_requests/{id}' do
+      patch 'approves or rejects an asset request' do
+        tags 'Asset Requests'
+        security [ bearerAuth: [] ]
+        consumes 'application/json'
+        parameter name: :id, in: :path, type: :integer
+        parameter name: :body, in: :body, schema: { type: :object }
+
+        response(200, 'manager approves a request') do
+          let(:id) { pending_request.id }
+          let(:body) { { asset_request: { status: 'approved' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            data = json_response[:status][:data][:asset_request]
+            expect(data[:status]).to eq 'approved'
+          end
+        end
+
+        response(200, 'manager rejects a request with notes') do
+          let(:id) { pending_request.id }
+          let(:body) { { asset_request: { status: 'rejected', notes: 'Budget not available this quarter.' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            data = json_response[:status][:data][:asset_request]
+            expect(data[:status]).to eq 'rejected'
+            expect(data[:notes]).to eq 'Budget not available this quarter.'
+          end
+        end
+
+        response(200, 'executive can approve a request') do
+          let(:id) { pending_request.id }
+          let(:body) { { asset_request: { status: 'approved' } } }
+          before { sign_in executive }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(json_response[:status][:data][:asset_request][:status]).to eq 'approved'
+          end
+        end
+
+        response(422, 'rejection without notes is rejected') do
+          let(:id) { pending_request.id }
+          let(:body) { { asset_request: { status: 'rejected' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :unprocessable_entity
+            expect(json_response[:message]).to include 'Notes is required'
+          end
+        end
+
+        response(403, 'employee cannot approve or reject') do
+          let(:id) { pending_request.id }
+          let(:body) { { asset_request: { status: 'approved' } } }
+          before { sign_in employee }
+
+          run_test! do |response|
+            expect(response).to have_http_status :forbidden
+          end
+        end
+
+        response(404, 'request not found') do
+          let(:id) { 0 }
+          let(:body) { { asset_request: { status: 'approved' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :not_found
+          end
+        end
+
+        response(401, 'unauthenticated') do
+          let(:id) { pending_request.id }
+          let(:body) { { asset_request: { status: 'approved' } } }
 
           run_test! do |response|
             expect(response).to have_http_status :unauthorized
