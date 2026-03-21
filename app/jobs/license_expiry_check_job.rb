@@ -10,40 +10,48 @@ class LicenseExpiryCheckJob < ApplicationJob
   ].freeze
 
   def perform
-    recipients = User.where(role: %w[manager executive])
+    recipients = User.where(role: %w[manager executive]).to_a
     return if recipients.empty?
+
+    now = Time.current
 
     THRESHOLDS.each do |threshold|
       licenses = License
         .where(expiry_date: Date.today + threshold[:days])
         .where(threshold[:column] => true)
+      next if licenses.empty?
+
+      already_notified_ids = Notification
+        .where(notifiable_type: "License", notifiable_id: licenses.map(&:id), notification_type: threshold[:type])
+        .where("DATE(created_at) = ?", Date.today)
+        .pluck(:notifiable_id)
+        .to_set
+
+      notifications = []
 
       licenses.each do |license|
-        next if already_notified_today?(license, threshold[:type])
+        next if already_notified_ids.include?(license.id)
 
         title = "License expiring in #{threshold[:days]} days"
         body = "#{license.software_name} (#{license.vendor}) expires on #{license.expiry_date.strftime('%b %d, %Y')}."
 
         recipients.each do |user|
-          Notification.create!(
-            user: user,
-            notifiable: license,
+          notifications << {
+            user_id: user.id,
+            notifiable_type: "License",
+            notifiable_id: license.id,
             notification_type: threshold[:type],
             title: title,
             body: body,
-          )
+            read_at: nil,
+            created_at: now,
+            updated_at: now
+          }
           LicenseMailer.expiry_alert(user, license, threshold[:days]).deliver_later
         end
       end
+
+      Notification.insert_all(notifications) if notifications.any?
     end
-  end
-
-  private
-
-  def already_notified_today?(license, type)
-    Notification
-      .where(notifiable: license, notification_type: type)
-      .where("DATE(created_at) = ?", Date.today)
-      .exists?
   end
 end
