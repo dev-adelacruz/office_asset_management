@@ -38,8 +38,16 @@ export interface Asset {
   updated_at: string;
 }
 
+export interface AssetPagination {
+  current_page: number;
+  total_pages: number;
+  total_count: number;
+  per_page: number;
+}
+
 export interface AssetState {
   assets: Asset[];
+  pagination: AssetPagination | null;
   assignmentLogs: AssetAssignmentLog[];
   isLoading: boolean;
   isCreating: boolean;
