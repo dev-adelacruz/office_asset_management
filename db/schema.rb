@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_200002) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_200003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -92,6 +92,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_200002) do
     t.index ["status"], name: "index_assets_on_status"
   end
 
+  create_table "audit_logs", force: :cascade do |t|
+    t.string "action", null: false
+    t.bigint "actor_id"
+    t.bigint "auditable_id", null: false
+    t.string "auditable_type", null: false
+    t.jsonb "changes_after", default: {}, null: false
+    t.jsonb "changes_before", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.index ["action"], name: "index_audit_logs_on_action"
+    t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
+    t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable"
+    t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable_type_and_auditable_id"
+    t.index ["created_at"], name: "index_audit_logs_on_created_at"
+  end
+
   create_table "license_seats", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "license_id", null: false
@@ -164,6 +179,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_200002) do
   add_foreign_key "asset_requests", "users"
   add_foreign_key "asset_status_logs", "assets"
   add_foreign_key "asset_status_logs", "users", column: "changed_by_id"
+  add_foreign_key "audit_logs", "users", column: "actor_id"
   add_foreign_key "license_seats", "licenses"
   add_foreign_key "license_seats", "users"
   add_foreign_key "notifications", "users"

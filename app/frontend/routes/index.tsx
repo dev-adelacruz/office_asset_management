@@ -6,6 +6,7 @@ import ProfilePage from '../pages/profile';
 import AssetsPage from '../pages/assets';
 import LicensesPage from '../pages/licenses';
 import RequestsPage from '../pages/requests';
+import AuditLogsPage from '../pages/audit-logs';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 const AppRoutes: React.FC = () => {
@@ -35,6 +36,11 @@ const AppRoutes: React.FC = () => {
         <Route path='/requests' element={
           <ProtectedRoute>
             <RequestsPage/>
+          </ProtectedRoute>
+        } />
+        <Route path='/audit-logs' element={
+          <ProtectedRoute>
+            <AuditLogsPage/>
           </ProtectedRoute>
         } />
         <Route path='/login' element={<LoginPage/>} />

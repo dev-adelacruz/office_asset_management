@@ -4,6 +4,7 @@ import assetReducer from './assets/assetSlice';
 import licenseReducer from './licenses/licenseSlice';
 import assetRequestReducer from './assetRequests/assetRequestSlice';
 import notificationReducer from './notifications/notificationSlice';
+import auditLogReducer from './auditLogs/auditLogSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     licenses: licenseReducer,
     assetRequests: assetRequestReducer,
     notifications: notificationReducer,
+    auditLogs: auditLogReducer,
   }
 })
 

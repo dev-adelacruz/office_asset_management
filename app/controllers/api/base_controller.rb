@@ -2,12 +2,17 @@
 
 class Api::BaseController < ApplicationController
   before_action :authenticate_user!
+  before_action :set_current_user
 
   rescue_from ActionController::ParameterMissing do |e|
     render json: { status: 422, message: e.message }, status: :unprocessable_entity
   end
 
   private
+
+  def set_current_user
+    Current.user = current_user
+  end
 
   def authenticate_user!(opts = {})
     unless current_user
