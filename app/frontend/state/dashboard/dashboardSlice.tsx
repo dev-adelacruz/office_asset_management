@@ -1,14 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { dashboardService } from '../../services/dashboardService';
-import { DashboardData } from '../../interfaces/state/dashboardState';
+import { DashboardData, DashboardPeriod } from '../../interfaces/state/dashboardState';
 import { RootState } from '../store';
 
 export const fetchDashboard = createAsyncThunk(
   'dashboard/fetch',
-  async (_, { getState, rejectWithValue }) => {
+  async (period: DashboardPeriod | undefined, { getState, rejectWithValue }) => {
     try {
       const token = (getState() as RootState).user.token ?? '';
-      return await dashboardService.getDashboard(token);
+      return await dashboardService.getDashboard(token, period);
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch dashboard');
     }

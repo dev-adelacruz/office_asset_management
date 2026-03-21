@@ -1,10 +1,13 @@
-import { DashboardData } from '../interfaces/state/dashboardState';
+import { DashboardData, DashboardPeriod } from '../interfaces/state/dashboardState';
 
 class DashboardService {
   private baseURL = '/api/v1';
 
-  async getDashboard(token: string): Promise<DashboardData> {
-    const response = await fetch(`${this.baseURL}/dashboard`, {
+  async getDashboard(token: string, period?: DashboardPeriod): Promise<DashboardData> {
+    const url = new URL(`${this.baseURL}/dashboard`, window.location.origin);
+    if (period) url.searchParams.set('period', period);
+
+    const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

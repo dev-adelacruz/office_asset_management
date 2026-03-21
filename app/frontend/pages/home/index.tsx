@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import {
@@ -9,10 +9,13 @@ import {
   ShieldCheck,
   XCircle,
   Clock,
+  DollarSign,
+  BarChart2,
 } from 'lucide-react';
 import AppLayout from '../../components/layout/AppLayout';
 import { fetchDashboard } from '../../state/dashboard/dashboardSlice';
 import { RootState } from '../../state/store';
+import { DashboardPeriod } from '../../interfaces/state/dashboardState';
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -51,12 +54,100 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, iconBg, i
   </div>
 );
 
+// ─── DonutChart ───────────────────────────────────────────────────────────────
+
+interface DonutSlice {
+  value: number;
+  color: string;
+  label: string;
+}
+
+const DonutChart: React.FC<{ slices: DonutSlice[]; total: number }> = ({ slices, total }) => {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  let cumulativePercent = 0;
+
+  if (total === 0) {
+    return (
+      <svg viewBox="0 0 100 100" className="w-32 h-32">
+        <circle cx="50" cy="50" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="18" />
+      </svg>
+    );
+  }
+
+  const segments = slices.map((slice) => {
+    const percent = slice.value / total;
+    const offset = circumference * (1 - cumulativePercent);
+    const dashArray = `${circumference * percent} ${circumference * (1 - percent)}`;
+    cumulativePercent += percent;
+    return { ...slice, offset, dashArray };
+  });
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-32 h-32 -rotate-90">
+      {segments.map((seg, i) => (
+        <circle
+          key={i}
+          cx="50"
+          cy="50"
+          r={radius}
+          fill="none"
+          stroke={seg.color}
+          strokeWidth="18"
+          strokeDasharray={seg.dashArray}
+          strokeDashoffset={seg.offset}
+        />
+      ))}
+    </svg>
+  );
+};
+
+// ─── BarChart ─────────────────────────────────────────────────────────────────
+
+interface BarChartItem {
+  label: string;
+  value: number;
+  color: string;
+}
+
+const BarChart: React.FC<{ items: BarChartItem[]; max: number }> = ({ items, max }) => (
+  <div className="space-y-2.5">
+    {items.map(({ label, value, color }) => (
+      <div key={label}>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-600 capitalize">{label}</span>
+          <span className="text-sm font-semibold text-gray-800">{value}</span>
+        </div>
+        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${color}`}
+            style={{ width: max > 0 ? `${Math.round((value / max) * 100)}%` : '0%' }}
+          />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+// ─── PERIOD_OPTIONS ───────────────────────────────────────────────────────────
+
+const PERIOD_OPTIONS: { value: DashboardPeriod | ''; label: string }[] = [
+  { value: '', label: 'All Time' },
+  { value: 'this_month', label: 'This Month' },
+  { value: 'last_month', label: 'Last Month' },
+  { value: 'last_quarter', label: 'Last Quarter' },
+  { value: 'this_year', label: 'This Year' },
+];
+
 // ─── HomePage ─────────────────────────────────────────────────────────────────
 
 const HomePage: React.FC = () => {
   const dispatch = useDispatch();
   const { data, isLoading, error } = useSelector((s: RootState) => s.dashboard);
   const user = useSelector((s: RootState) => s.user.user);
+  const isExecutive = user?.role === 'executive';
+
+  const [period, setPeriod] = useState<DashboardPeriod | ''>('');
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -66,8 +157,11 @@ const HomePage: React.FC = () => {
   })();
 
   useEffect(() => {
-    dispatch(fetchDashboard() as any);
-  }, [dispatch]);
+    dispatch(fetchDashboard(period || undefined) as any);
+  }, [dispatch, period]);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 
   const statCards = [
     {
@@ -78,14 +172,24 @@ const HomePage: React.FC = () => {
       iconColor: 'text-blue-600',
       accent: 'from-blue-500 to-blue-600',
     },
-    {
-      label: 'Available Assets',
-      value: data?.assets.by_status.available ?? 0,
-      icon: CheckCircle,
-      iconBg: 'bg-emerald-100',
-      iconColor: 'text-emerald-600',
-      accent: 'from-emerald-500 to-emerald-600',
-    },
+    ...(isExecutive
+      ? [{
+          label: 'Total Asset Value',
+          value: data ? formatCurrency(data.assets.total_value) : '—',
+          icon: DollarSign,
+          iconBg: 'bg-teal-100',
+          iconColor: 'text-teal-600',
+          accent: 'from-teal-500 to-teal-600',
+        }]
+      : [{
+          label: 'Available Assets',
+          value: data?.assets.by_status.available ?? 0,
+          icon: CheckCircle,
+          iconBg: 'bg-emerald-100',
+          iconColor: 'text-emerald-600',
+          accent: 'from-emerald-500 to-emerald-600',
+        }]
+    ),
     {
       label: 'Licenses Expiring Soon',
       value: data?.licenses.expiring_soon ?? 0,
@@ -114,15 +218,58 @@ const HomePage: React.FC = () => {
       ]
     : [];
 
+  const categoryItems: BarChartItem[] = data
+    ? [
+        { label: 'Laptop', value: data.assets.by_category.laptop, color: 'bg-blue-500' },
+        { label: 'Monitor', value: data.assets.by_category.monitor, color: 'bg-indigo-500' },
+        { label: 'Peripheral', value: data.assets.by_category.peripheral, color: 'bg-violet-400' },
+        { label: 'Furniture', value: data.assets.by_category.furniture, color: 'bg-amber-400' },
+        { label: 'Other', value: data.assets.by_category.other, color: 'bg-gray-400' },
+      ]
+    : [];
+
+  const maxCategory = Math.max(...categoryItems.map((c) => c.value), 1);
+
   const total = data?.assets.total ?? 0;
+
+  const licenseDonutSlices: DonutSlice[] = data
+    ? [
+        { label: 'Active', value: data.licenses.active, color: '#10b981' },
+        { label: 'Expiring Soon', value: data.licenses.expiring_soon, color: '#f59e0b' },
+        { label: 'Expired', value: data.licenses.expired, color: '#ef4444' },
+      ]
+    : [];
+
+  const licenseTotal = data ? data.licenses.active + data.licenses.expiring_soon + data.licenses.expired : 0;
+  const usedSeats = data?.licenses.utilization.used_seats ?? 0;
+  const totalSeats = data?.licenses.utilization.total_seats ?? 0;
+  const utilizationPct = totalSeats > 0 ? Math.round((usedSeats / totalSeats) * 100) : 0;
 
   return (
     <AppLayout title="Dashboard">
       <div className="space-y-6">
         {/* Welcome banner */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Here's a snapshot of your office assets today.</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Here's a snapshot of your office assets today.</p>
+          </div>
+
+          {/* Period selector — executive only */}
+          {isExecutive && (
+            <div className="flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-gray-400" />
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as DashboardPeriod | '')}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {PERIOD_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Stat cards */}
@@ -131,6 +278,22 @@ const HomePage: React.FC = () => {
             <StatCard key={card.label} {...card} isLoading={isLoading} />
           ))}
         </div>
+
+        {/* Executive: period spend summary */}
+        {isExecutive && period && data && (
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-blue-700 font-medium">
+                {PERIOD_OPTIONS.find((o) => o.value === period)?.label} Summary
+              </p>
+              <p className="text-xs text-blue-500 mt-0.5">New assets added in selected period</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-800">{data.assets.period_additions}</p>
+              <p className="text-sm text-blue-600">{formatCurrency(data.assets.period_spend)} spent</p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
@@ -177,22 +340,60 @@ const HomePage: React.FC = () => {
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Active', value: data?.licenses.active ?? 0, icon: ShieldCheck, bg: 'bg-emerald-50', text: 'text-emerald-700' },
-                  { label: 'Expiring Soon', value: data?.licenses.expiring_soon ?? 0, icon: AlertTriangle, bg: 'bg-amber-50', text: 'text-amber-700' },
-                  { label: 'Expired', value: data?.licenses.expired ?? 0, icon: XCircle, bg: 'bg-red-50', text: 'text-red-700' },
-                ].map(({ label, value, icon: Icon, bg, text }) => (
-                  <div key={label} className={`${bg} rounded-xl p-4 text-center`}>
-                    <Icon className={`w-5 h-5 ${text} mx-auto mb-1`} />
-                    <p className={`text-xl font-bold ${text}`}>{value}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+              <>
+                <div className="flex items-center gap-6">
+                  <DonutChart slices={licenseDonutSlices} total={licenseTotal} />
+                  <div className="space-y-2 flex-1">
+                    {[
+                      { label: 'Active', value: data?.licenses.active ?? 0, color: 'bg-emerald-500', text: 'text-emerald-700' },
+                      { label: 'Expiring Soon', value: data?.licenses.expiring_soon ?? 0, color: 'bg-amber-400', text: 'text-amber-700' },
+                      { label: 'Expired', value: data?.licenses.expired ?? 0, color: 'bg-red-500', text: 'text-red-700' },
+                    ].map(({ label, value, color, text }) => (
+                      <div key={label} className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
+                        <span className="text-sm text-gray-600 flex-1">{label}</span>
+                        <span className={`text-sm font-semibold ${text}`}>{value}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+
+                {/* Seat utilization — executive only */}
+                {isExecutive && (
+                  <div className="mt-5 pt-4 border-t border-gray-50">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm text-gray-600">Seat Utilization</span>
+                      <span className="text-sm font-semibold text-gray-800">{usedSeats} / {totalSeats}</span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                        style={{ width: `${utilizationPct}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{utilizationPct}% of seats in use</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
+
+        {/* Executive: asset category breakdown */}
+        {isExecutive && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Assets by Category</h3>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-6 w-full" />)}
+              </div>
+            ) : total === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No assets registered yet.</p>
+            ) : (
+              <BarChart items={categoryItems} max={maxCategory} />
+            )}
+          </div>
+        )}
 
         {/* Recent activity */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
