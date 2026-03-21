@@ -10,9 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "asset_assignment_logs", force: :cascade do |t|
+    t.bigint "asset_id", null: false
+    t.datetime "assigned_at", null: false
+    t.bigint "assigned_by_id", null: false
+    t.bigint "assigned_to_id", null: false
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.datetime "returned_at"
+    t.datetime "updated_at", null: false
+    t.index ["asset_id"], name: "index_asset_assignment_logs_on_asset_id"
+    t.index ["assigned_at"], name: "index_asset_assignment_logs_on_assigned_at"
+    t.index ["assigned_by_id"], name: "index_asset_assignment_logs_on_assigned_by_id"
+    t.index ["assigned_to_id"], name: "index_asset_assignment_logs_on_assigned_to_id"
+  end
 
   create_table "asset_request_status_logs", force: :cascade do |t|
     t.bigint "asset_request_id", null: false
@@ -122,6 +137,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_190000) do
     t.index ["role"], name: "index_users_on_role"
   end
 
+  add_foreign_key "asset_assignment_logs", "assets"
+  add_foreign_key "asset_assignment_logs", "users", column: "assigned_by_id"
+  add_foreign_key "asset_assignment_logs", "users", column: "assigned_to_id"
   add_foreign_key "asset_request_status_logs", "asset_requests"
   add_foreign_key "asset_request_status_logs", "users", column: "changed_by_id"
   add_foreign_key "asset_requests", "users"

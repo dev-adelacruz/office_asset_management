@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { assetService, CreateAssetParams } from '../../services/assetService';
+import { assetService, CreateAssetParams, CreateAssignmentLogParams } from '../../services/assetService';
 
-import { AssetStatus } from '../../interfaces/state/assetState';
+import { AssetAssignmentLog, AssetStatus } from '../../interfaces/state/assetState';
 import { RootState } from '../store';
 
 export const fetchAssets = createAsyncThunk(
@@ -52,18 +52,61 @@ export const updateAssetStatus = createAsyncThunk(
   }
 );
 
+export const fetchAssignmentLogs = createAsyncThunk(
+  'assets/fetchAssignmentLogs',
+  async (assetId: number, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      return await assetService.listAssignmentLogs(assetId, token);
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch assignment history');
+    }
+  }
+);
+
+export const assignAsset = createAsyncThunk(
+  'assets/assign',
+  async ({ assetId, params }: { assetId: number; params: CreateAssignmentLogParams }, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      return await assetService.createAssignmentLog(assetId, params, token);
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to assign asset');
+    }
+  }
+);
+
+export const recordAssetReturn = createAsyncThunk(
+  'assets/recordReturn',
+  async ({ assetId, logId }: { assetId: number; logId: number }, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      return await assetService.recordReturn(assetId, logId, token);
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to record return');
+    }
+  }
+);
+
 const assetSlice = createSlice({
   name: 'assets',
   initialState: {
     assets: [] as import('../../interfaces/state/assetState').Asset[],
+    assignmentLogs: [] as AssetAssignmentLog[],
     isLoading: false,
     isCreating: false,
     isEditing: false,
     isUpdating: false,
+    isFetchingHistory: false,
+    isAssigning: false,
+    isReturning: false,
     error: null as string | null,
     createError: null as string | null,
     editError: null as string | null,
     updateError: null as string | null,
+    historyError: null as string | null,
+    assignError: null as string | null,
+    returnError: null as string | null,
   },
   reducers: {
     clearCreateError: (state) => {
@@ -74,6 +117,16 @@ const assetSlice = createSlice({
     },
     clearUpdateError: (state) => {
       state.updateError = null;
+    },
+    clearAssignError: (state) => {
+      state.assignError = null;
+    },
+    clearReturnError: (state) => {
+      state.returnError = null;
+    },
+    clearAssignmentLogs: (state) => {
+      state.assignmentLogs = [];
+      state.historyError = null;
     },
   },
   extraReducers: (builder) => {
@@ -130,8 +183,48 @@ const assetSlice = createSlice({
       state.isUpdating = false;
       state.updateError = action.payload as string;
     });
+
+    builder.addCase(fetchAssignmentLogs.pending, (state) => {
+      state.isFetchingHistory = true;
+      state.historyError = null;
+    });
+    builder.addCase(fetchAssignmentLogs.fulfilled, (state, action) => {
+      state.isFetchingHistory = false;
+      state.assignmentLogs = action.payload;
+    });
+    builder.addCase(fetchAssignmentLogs.rejected, (state, action) => {
+      state.isFetchingHistory = false;
+      state.historyError = action.payload as string;
+    });
+
+    builder.addCase(assignAsset.pending, (state) => {
+      state.isAssigning = true;
+      state.assignError = null;
+    });
+    builder.addCase(assignAsset.fulfilled, (state, action) => {
+      state.isAssigning = false;
+      state.assignmentLogs.unshift(action.payload);
+    });
+    builder.addCase(assignAsset.rejected, (state, action) => {
+      state.isAssigning = false;
+      state.assignError = action.payload as string;
+    });
+
+    builder.addCase(recordAssetReturn.pending, (state) => {
+      state.isReturning = true;
+      state.returnError = null;
+    });
+    builder.addCase(recordAssetReturn.fulfilled, (state, action) => {
+      state.isReturning = false;
+      const idx = state.assignmentLogs.findIndex((l) => l.id === action.payload.id);
+      if (idx !== -1) state.assignmentLogs[idx] = action.payload;
+    });
+    builder.addCase(recordAssetReturn.rejected, (state, action) => {
+      state.isReturning = false;
+      state.returnError = action.payload as string;
+    });
   },
 });
 
-export const { clearCreateError, clearEditError, clearUpdateError } = assetSlice.actions;
+export const { clearCreateError, clearEditError, clearUpdateError, clearAssignError, clearReturnError, clearAssignmentLogs } = assetSlice.actions;
 export default assetSlice.reducer;
