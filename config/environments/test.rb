@@ -50,4 +50,10 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # Active Record encryption keys for field-level encryption (e.g. License#license_key).
+  # Override via AR_ENCRYPTION_* env vars in CI. Do not use these values in production.
+  config.active_record.encryption.primary_key = ENV.fetch("AR_ENCRYPTION_PRIMARY_KEY", "test-primary-key-for-rspec-dev00")
+  config.active_record.encryption.deterministic_key = ENV.fetch("AR_ENCRYPTION_DET_KEY", "test-deterministic-key-rspec-dev")
+  config.active_record.encryption.key_derivation_salt = ENV.fetch("AR_ENCRYPTION_SALT", "test-key-derivation-salt-rspec00")
 end

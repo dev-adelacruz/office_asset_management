@@ -5,7 +5,7 @@ import { logoutUser } from '../../state/user/userSlice';
 import { RootState } from '../../state/store';
 import {
   LayoutDashboard, User, Settings, LogOut, Bell,
-  ChevronDown, Zap, Package,
+  ChevronDown, Zap, Package, ShieldCheck,
 } from 'lucide-react';
 
 interface AppLayoutProps {
@@ -16,6 +16,7 @@ interface AppLayoutProps {
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { label: 'Assets', icon: Package, path: '/assets' },
+  { label: 'Licenses', icon: ShieldCheck, path: '/licenses' },
   { label: 'Profile', icon: User, path: '/profile' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ];

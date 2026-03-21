@@ -1,0 +1,631 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchLicenses,
+  createLicense,
+  updateLicense,
+  clearCreateError,
+  clearEditError,
+} from '../../state/licenses/licenseSlice';
+import { RootState } from '../../state/store';
+import { License, LicenseStatus } from '../../interfaces/state/licenseState';
+import { CreateLicenseParams } from '../../services/licenseService';
+import AppLayout from '../../components/layout/AppLayout';
+import {
+  Plus,
+  Pencil,
+  ShieldCheck,
+  AlertTriangle,
+  XCircle,
+  CheckCircle,
+  X,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const STATUS_STYLES: Record<LicenseStatus, string> = {
+  active: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  expiring_soon: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  expired: 'bg-red-50 text-red-700 ring-1 ring-red-200',
+};
+
+const STATUS_LABELS: Record<LicenseStatus, string> = {
+  active: 'Active',
+  expiring_soon: 'Expiring Soon',
+  expired: 'Expired',
+};
+
+const STATUS_ICONS: Record<LicenseStatus, React.ReactNode> = {
+  active: <ShieldCheck className="w-3 h-3" />,
+  expiring_soon: <AlertTriangle className="w-3 h-3" />,
+  expired: <XCircle className="w-3 h-3" />,
+};
+
+// ─── RegisterLicenseModal ─────────────────────────────────────────────────────
+
+interface RegisterLicenseModalProps {
+  onClose: () => void;
+}
+
+const RegisterLicenseModal: React.FC<RegisterLicenseModalProps> = ({ onClose }) => {
+  const dispatch = useDispatch();
+  const { isCreating, createError } = useSelector((s: RootState) => s.licenses);
+  const [visible, setVisible] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+  const [form, setForm] = useState({
+    software_name: '',
+    vendor: '',
+    license_key: '',
+    total_seats: '',
+    cost: '',
+    expiry_date: '',
+    renewal_contact: '',
+    purchase_order_number: '',
+    notes: '',
+  });
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 200);
+    dispatch(clearCreateError());
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const params: CreateLicenseParams = {
+      software_name: form.software_name,
+      vendor: form.vendor,
+      license_key: form.license_key,
+      total_seats: Number(form.total_seats),
+      cost: Number(form.cost),
+      expiry_date: form.expiry_date,
+      ...(form.renewal_contact && { renewal_contact: form.renewal_contact }),
+      ...(form.purchase_order_number && { purchase_order_number: form.purchase_order_number }),
+      ...(form.notes && { notes: form.notes }),
+    };
+    const result = await dispatch(createLicense(params) as any);
+    if (!result.error) handleClose();
+  };
+
+  const field = (key: keyof typeof form) => ({
+    value: form[key],
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value })),
+  });
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ${
+        visible ? 'bg-black/40' : 'bg-transparent'
+      }`}
+      onClick={(e) => e.target === e.currentTarget && handleClose()}
+    >
+      <div
+        className={`bg-white rounded-2xl shadow-2xl w-full max-w-lg transition-all duration-200 ${
+          visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Register License</h2>
+          <button onClick={handleClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          {createError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-50 border border-red-200">
+              <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{createError}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Software Name <span className="text-red-500">*</span></label>
+              <input {...field('software_name')} required placeholder="Adobe Creative Cloud" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Vendor <span className="text-red-500">*</span></label>
+              <input {...field('vendor')} required placeholder="Adobe Inc." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">PO Number</label>
+              <input {...field('purchase_order_number')} placeholder="PO-2026-001" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">License Key <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <input
+                  {...field('license_key')}
+                  required
+                  type={showKey ? 'text' : 'password'}
+                  placeholder="XXXX-YYYY-ZZZZ-1234"
+                  className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Total Seats <span className="text-red-500">*</span></label>
+              <input {...field('total_seats')} required type="number" min="1" placeholder="10" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cost (USD) <span className="text-red-500">*</span></label>
+              <input {...field('cost')} required type="number" min="0" step="0.01" placeholder="599.99" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Expiry Date <span className="text-red-500">*</span></label>
+              <input {...field('expiry_date')} required type="date" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Renewal Contact</label>
+              <input {...field('renewal_contact')} type="email" placeholder="it@company.com" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+              <textarea {...field('notes')} rows={2} placeholder="Optional notes..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors resize-none" />
+            </div>
+          </div>
+        </form>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit as any}
+            disabled={isCreating}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isCreating ? 'Registering...' : 'Register License'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── EditLicenseModal ─────────────────────────────────────────────────────────
+
+interface EditLicenseModalProps {
+  license: License;
+  onClose: () => void;
+}
+
+const EditLicenseModal: React.FC<EditLicenseModalProps> = ({ license, onClose }) => {
+  const dispatch = useDispatch();
+  const { isEditing, editError } = useSelector((s: RootState) => s.licenses);
+  const [visible, setVisible] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+  const [form, setForm] = useState({
+    software_name: license.software_name,
+    vendor: license.vendor,
+    license_key: license.license_key,
+    total_seats: String(license.total_seats),
+    cost: String(license.cost),
+    expiry_date: license.expiry_date,
+    renewal_contact: license.renewal_contact ?? '',
+    purchase_order_number: license.purchase_order_number ?? '',
+    notes: license.notes ?? '',
+  });
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 200);
+    dispatch(clearEditError());
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const params: Partial<CreateLicenseParams> = {
+      software_name: form.software_name,
+      vendor: form.vendor,
+      license_key: form.license_key,
+      total_seats: Number(form.total_seats),
+      cost: Number(form.cost),
+      expiry_date: form.expiry_date,
+      renewal_contact: form.renewal_contact || undefined,
+      purchase_order_number: form.purchase_order_number || undefined,
+      notes: form.notes || undefined,
+    };
+    const result = await dispatch(updateLicense({ licenseId: license.id, params }) as any);
+    if (!result.error) handleClose();
+  };
+
+  const field = (key: keyof typeof form) => ({
+    value: form[key],
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value })),
+  });
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ${
+        visible ? 'bg-black/40' : 'bg-transparent'
+      }`}
+      onClick={(e) => e.target === e.currentTarget && handleClose()}
+    >
+      <div
+        className={`bg-white rounded-2xl shadow-2xl w-full max-w-lg transition-all duration-200 ${
+          visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Edit License</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{license.software_name}</p>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          {editError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-50 border border-red-200">
+              <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{editError}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Software Name <span className="text-red-500">*</span></label>
+              <input {...field('software_name')} required className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Vendor <span className="text-red-500">*</span></label>
+              <input {...field('vendor')} required className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">PO Number</label>
+              <input {...field('purchase_order_number')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">License Key <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <input
+                  {...field('license_key')}
+                  required
+                  type={showKey ? 'text' : 'password'}
+                  className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Total Seats <span className="text-red-500">*</span></label>
+              <input {...field('total_seats')} required type="number" min="1" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cost (USD) <span className="text-red-500">*</span></label>
+              <input {...field('cost')} required type="number" min="0" step="0.01" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Expiry Date <span className="text-red-500">*</span></label>
+              <input {...field('expiry_date')} required type="date" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Renewal Contact</label>
+              <input {...field('renewal_contact')} type="email" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+              <textarea {...field('notes')} rows={2} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors resize-none" />
+            </div>
+          </div>
+        </form>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit as any}
+            disabled={isEditing}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isEditing ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── SuccessToast ─────────────────────────────────────────────────────────────
+
+interface SuccessToastProps {
+  message: string;
+  onDismiss: () => void;
+}
+
+const SuccessToast: React.FC<SuccessToastProps> = ({ message, onDismiss }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+    const t = setTimeout(() => {
+      setVisible(false);
+      setTimeout(onDismiss, 300);
+    }, 3500);
+    return () => clearTimeout(t);
+  }, [onDismiss]);
+
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg border border-gray-100 transition-all duration-300 ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+      }`}
+    >
+      <div className="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100">
+        <CheckCircle className="w-4 h-4 text-emerald-600" />
+      </div>
+      <p className="text-sm font-medium text-gray-800">{message}</p>
+      <button onClick={onDismiss} className="ml-2 text-gray-400 hover:text-gray-600 transition-colors">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+};
+
+// ─── LicensesPage ─────────────────────────────────────────────────────────────
+
+const LicensesPage: React.FC = () => {
+  const dispatch = useDispatch();
+  const { licenses, isLoading, error } = useSelector((s: RootState) => s.licenses);
+  const user = useSelector((s: RootState) => s.user.user);
+
+  const [showRegister, setShowRegister] = useState(false);
+  const [editingLicense, setEditingLicense] = useState<License | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const prevLicensesRef = useRef<License[]>([]);
+
+  const canWrite = user?.role === 'manager' || user?.role === 'executive';
+
+  useEffect(() => {
+    dispatch(fetchLicenses() as any);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (prevLicensesRef.current.length > 0) {
+      const prev = prevLicensesRef.current;
+      const added = licenses.find((l) => !prev.some((p) => p.id === l.id));
+      if (added) setToast(`"${added.software_name}" registered successfully.`);
+
+      const updated = licenses.find((l) => {
+        const p = prev.find((p) => p.id === l.id);
+        return p && p.updated_at !== l.updated_at;
+      });
+      if (updated) setToast(`"${updated.software_name}" updated successfully.`);
+    }
+    prevLicensesRef.current = licenses;
+  }, [licenses]);
+
+  const filteredLicenses = licenses.filter((l) => {
+    if (filterStatus && l.status !== filterStatus) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        l.software_name.toLowerCase().includes(q) ||
+        l.vendor.toLowerCase().includes(q) ||
+        (l.purchase_order_number?.toLowerCase().includes(q) ?? false)
+      );
+    }
+    return true;
+  });
+
+  const stats = {
+    total: licenses.length,
+    active: licenses.filter((l) => l.status === 'active').length,
+    expiring: licenses.filter((l) => l.status === 'expiring_soon').length,
+    expired: licenses.filter((l) => l.status === 'expired').length,
+  };
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  const daysUntilExpiry = (d: string) => {
+    const diff = new Date(d).getTime() - Date.now();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  return (
+    <AppLayout title="Software Licenses">
+      <div className="space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">
+              {licenses.length} license{licenses.length !== 1 ? 's' : ''} registered
+            </p>
+          </div>
+          {canWrite && (
+            <button
+              onClick={() => setShowRegister(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+            >
+              <Plus className="w-4 h-4" />
+              Register License
+            </button>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: 'Total', value: stats.total, color: 'text-gray-900', bg: 'bg-white' },
+            { label: 'Active', value: stats.active, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+            { label: 'Expiring Soon', value: stats.expiring, color: 'text-amber-700', bg: 'bg-amber-50' },
+            { label: 'Expired', value: stats.expired, color: 'text-red-700', bg: 'bg-red-50' },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} className={`${bg} rounded-xl p-4 border border-gray-100 shadow-sm`}>
+              <p className="text-xs font-medium text-gray-500">{label}</p>
+              <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search software, vendor, PO..."
+            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-colors"
+          />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-colors"
+          >
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="expiring_soon">Expiring Soon</option>
+            <option value="expired">Expired</option>
+          </select>
+          {(searchQuery || filterStatus) && (
+            <button
+              onClick={() => { setSearchQuery(''); setFilterStatus(''); }}
+              className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Loading licenses...</div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-48 text-red-500 text-sm">{error}</div>
+          ) : filteredLicenses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+              <ShieldCheck className="w-8 h-8 mb-2 opacity-30" />
+              <p className="text-sm font-medium">
+                {licenses.length === 0 ? 'No licenses registered yet' : 'No licenses match your filters'}
+              </p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/60">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Software</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendor</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Seats</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cost</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expiry</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                  {canWrite && (
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredLicenses.map((license) => {
+                  const days = daysUntilExpiry(license.expiry_date);
+                  return (
+                    <tr key={license.id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <div className="font-medium text-gray-900">{license.software_name}</div>
+                        {license.purchase_order_number && (
+                          <div className="text-xs text-gray-400 mt-0.5">{license.purchase_order_number}</div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-600">{license.vendor}</td>
+                      <td className="px-4 py-3.5 text-gray-700 font-medium">{license.total_seats.toLocaleString()}</td>
+                      <td className="px-4 py-3.5 text-gray-700">{formatCurrency(license.cost)}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="text-gray-700">{formatDate(license.expiry_date)}</div>
+                        {license.status === 'expiring_soon' && (
+                          <div className="text-xs text-amber-600 mt-0.5">
+                            {days > 0 ? `${days}d left` : 'Today'}
+                          </div>
+                        )}
+                        {license.status === 'expired' && (
+                          <div className="text-xs text-red-500 mt-0.5">
+                            {Math.abs(days)}d ago
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[license.status]}`}>
+                          {STATUS_ICONS[license.status]}
+                          {STATUS_LABELS[license.status]}
+                        </span>
+                      </td>
+                      {canWrite && (
+                        <td className="px-5 py-3.5 text-right">
+                          <button
+                            onClick={() => setEditingLicense(license)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                            title="Edit license"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {showRegister && <RegisterLicenseModal onClose={() => setShowRegister(false)} />}
+      {editingLicense && <EditLicenseModal license={editingLicense} onClose={() => setEditingLicense(null)} />}
+      {toast && <SuccessToast message={toast} onDismiss={() => setToast(null)} />}
+    </AppLayout>
+  );
+};
+
+export default LicensesPage;
