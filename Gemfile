@@ -57,6 +57,7 @@ group :test do
   gem "selenium-webdriver"
 end
 gem "blueprinter"
+gem "interactor-rails", "~> 2.2"
 gem "devise"
 gem "devise-jwt"
 gem "rack-cors"
