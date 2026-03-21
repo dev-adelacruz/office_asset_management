@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
+require "csv"
+
 class Api::V1::AssetsController < Api::BaseController
   before_action :require_manager_or_executive!, only: [ :create, :update ]
   before_action :set_asset, only: [ :update ]
 
   def index
-    assets = Asset.all.order(created_at: :desc)
+    assets = filtered_assets.order(created_at: :desc)
     render json: {
       status: {
         code: 200,
@@ -13,6 +15,23 @@ class Api::V1::AssetsController < Api::BaseController
         data: { assets: AssetBlueprint.render_as_hash(assets) }
       }
     }, status: :ok
+  end
+
+  def export
+    assets = filtered_assets.order(created_at: :desc)
+    csv = CSV.generate(headers: true) do |csv|
+      csv << %w[asset_code name category serial_number purchase_date purchase_cost
+                condition status manufacturer model warranty_expiry location notes created_at]
+      assets.each do |asset|
+        csv << [
+          asset.asset_code, asset.name, asset.category, asset.serial_number,
+          asset.purchase_date, asset.purchase_cost, asset.condition, asset.status,
+          asset.manufacturer, asset.model, asset.warranty_expiry, asset.location,
+          asset.notes, asset.created_at.iso8601
+        ]
+      end
+    end
+    send_data csv, filename: "assets_#{Date.today}.csv", type: "text/csv", disposition: "attachment"
   end
 
   def create
@@ -52,6 +71,17 @@ class Api::V1::AssetsController < Api::BaseController
   end
 
   private
+
+  def filtered_assets
+    scope = Asset.all
+    scope = scope.where("name ILIKE :q OR serial_number ILIKE :q OR notes ILIKE :q", q: "%#{params[:q]}%") if params[:q].present?
+    scope = scope.where(category: params[:category]) if params[:category].present?
+    scope = scope.where(status: params[:status]) if params[:status].present?
+    scope = scope.where("location ILIKE ?", "%#{params[:location]}%") if params[:location].present?
+    scope = scope.where("purchase_date >= ?", params[:purchase_date_from]) if params[:purchase_date_from].present?
+    scope = scope.where("purchase_date <= ?", params[:purchase_date_to]) if params[:purchase_date_to].present?
+    scope
+  end
 
   def require_manager_or_executive!
     authorize_role!(:manager, :executive)

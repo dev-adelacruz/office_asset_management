@@ -6,6 +6,7 @@ import AppLayout from '../../components/layout/AppLayout';
 import {
   Package, Plus, AlertCircle, Loader2, X, Hash,
   DollarSign, MapPin, FileText, CheckCircle, ChevronDown, AlertTriangle, Pencil,
+  Search, Download,
 } from 'lucide-react';
 import { Asset, AssetCategory, AssetCondition, AssetStatus } from '../../interfaces/state/assetState';
 
@@ -750,6 +751,15 @@ const AssetsPage: React.FC = () => {
   const canCreate = user?.role === 'manager' || user?.role === 'executive';
   const canChangeStatus = canCreate;
 
+  // Search & filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState<AssetCategory | ''>('');
+  const [filterStatus, setFilterStatus] = useState<AssetStatus | ''>('');
+  const [filterLocation, setFilterLocation] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   // Register modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -839,6 +849,46 @@ const AssetsPage: React.FC = () => {
     setTimeout(() => { setStatusModalOpen(false); setStatusModalAsset(null); }, 200);
   };
 
+  // Client-side filtered assets
+  const filteredAssets = assets.filter((a) => {
+    const q = searchQuery.toLowerCase();
+    if (q && !a.name.toLowerCase().includes(q) && !a.serial_number.toLowerCase().includes(q) && !(a.notes ?? '').toLowerCase().includes(q)) return false;
+    if (filterCategory && a.category !== filterCategory) return false;
+    if (filterStatus && a.status !== filterStatus) return false;
+    if (filterLocation && !(a.location ?? '').toLowerCase().includes(filterLocation.toLowerCase())) return false;
+    if (filterDateFrom && a.purchase_date < filterDateFrom) return false;
+    if (filterDateTo && a.purchase_date > filterDateTo) return false;
+    return true;
+  });
+
+  const hasActiveFilters = !!(searchQuery || filterCategory || filterStatus || filterLocation || filterDateFrom || filterDateTo);
+
+  const clearFilters = () => {
+    setSearchQuery(''); setFilterCategory(''); setFilterStatus('');
+    setFilterLocation(''); setFilterDateFrom(''); setFilterDateTo('');
+  };
+
+  const exportCSV = () => {
+    const headers = ['asset_code', 'name', 'category', 'serial_number', 'purchase_date',
+      'purchase_cost', 'condition', 'status', 'manufacturer', 'model',
+      'warranty_expiry', 'location', 'notes'];
+    const rows = filteredAssets.map((a) => [
+      a.asset_code, a.name, a.category, a.serial_number, a.purchase_date,
+      a.purchase_cost, a.condition, a.status, a.manufacturer ?? '',
+      a.model ?? '', a.warranty_expiry ?? '', a.location ?? '', a.notes ?? '',
+    ]);
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `assets_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Stats summary — retired and lost excluded from "active" count per AC
   const activeAssets = assets.filter((a) => a.status !== 'retired' && a.status !== 'lost');
   const stats = [
@@ -901,6 +951,115 @@ const AssetsPage: React.FC = () => {
           </div>
         )}
 
+        {/* Search & filter bar */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 space-y-3">
+          <div className="flex items-center gap-3">
+            {/* Search input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, serial no., or notes…"
+                className="w-full pl-9 pr-4 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all duration-150 placeholder:text-gray-400"
+              />
+            </div>
+            {/* Toggle filters */}
+            <button
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-xl border transition-all duration-150 ${
+                filtersOpen || (hasActiveFilters && !searchQuery)
+                  ? 'bg-blue-50 text-blue-600 border-blue-200'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${filtersOpen ? 'rotate-180' : ''}`} />
+              Filters
+              {hasActiveFilters && (filterCategory || filterStatus || filterLocation || filterDateFrom || filterDateTo) && (
+                <span className="ml-0.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+              )}
+            </button>
+            {/* Export CSV */}
+            <button
+              onClick={exportCSV}
+              disabled={filteredAssets.length === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Export filtered results to CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export
+            </button>
+            {/* Clear filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors duration-150 whitespace-nowrap"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          {/* Expanded filters */}
+          {filtersOpen && (
+            <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100 sm:grid-cols-3 lg:grid-cols-5">
+              {/* Category */}
+              <div className="relative">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value as AssetCategory | '')}
+                  className="w-full pl-3 pr-7 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none transition-all duration-150"
+                >
+                  <option value="">All categories</option>
+                  {CATEGORIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Status */}
+              <div className="relative">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as AssetStatus | '')}
+                  className="w-full pl-3 pr-7 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none transition-all duration-150"
+                >
+                  <option value="">All statuses</option>
+                  {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Location */}
+              <input
+                type="text"
+                value={filterLocation}
+                onChange={(e) => setFilterLocation(e.target.value)}
+                placeholder="Location…"
+                className="pl-3 pr-4 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-150 placeholder:text-gray-400"
+              />
+
+              {/* Date from */}
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                placeholder="Purchase from"
+                className="pl-3 pr-4 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-150"
+              />
+
+              {/* Date to */}
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                placeholder="Purchase to"
+                className="pl-3 pr-4 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-150"
+              />
+            </div>
+          )}
+        </div>
+
         {/* Table */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {isLoading ? (
@@ -918,6 +1077,15 @@ const AssetsPage: React.FC = () => {
                 {canCreate ? 'Click "Register Asset" to add the first one to the inventory.' : 'No assets have been registered yet.'}
               </p>
             </div>
+          ) : filteredAssets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-3">
+                <Search className="w-5 h-5 text-gray-300" />
+              </div>
+              <p className="text-sm font-semibold text-gray-600">No results</p>
+              <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters.</p>
+              <button onClick={clearFilters} className="mt-3 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors">Clear filters</button>
+            </div>
           ) : (
             <table className="w-full text-left">
               <thead>
@@ -932,7 +1100,7 @@ const AssetsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {assets.map((asset) => (
+                {filteredAssets.map((asset) => (
                   <AssetRow
                     key={asset.id}
                     asset={asset}

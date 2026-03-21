@@ -52,6 +52,138 @@ RSpec.describe 'Assets' do
     end
   end
 
+  describe '#index (filtered)' do
+    path '/api/v1/assets' do
+      get 'filters assets by query params' do
+        tags 'Assets'
+        security [ bearerAuth: [] ]
+        parameter name: :q, in: :query, type: :string, required: false
+        parameter name: :category, in: :query, type: :string, required: false
+        parameter name: :status, in: :query, type: :string, required: false
+        parameter name: :location, in: :query, type: :string, required: false
+        parameter name: :purchase_date_from, in: :query, type: :string, required: false
+        parameter name: :purchase_date_to, in: :query, type: :string, required: false
+
+        before { sign_in manager }
+
+        response(200, 'filters by text search') do
+          before do
+            create(:asset, name: 'ThinkPad X1', serial_number: 'LENOVO-001', notes: nil)
+            create(:asset, name: 'MacBook Pro', serial_number: 'APPLE-001', notes: nil)
+          end
+          let(:q) { 'ThinkPad' }
+
+          run_test! do
+            expect(json_response[:status][:data][:assets].length).to eq 1
+            expect(json_response[:status][:data][:assets].first[:name]).to eq 'ThinkPad X1'
+          end
+        end
+
+        response(200, 'filters by category') do
+          before do
+            create(:asset, :laptop)
+            create(:asset, :monitor)
+          end
+          let(:category) { 'monitor' }
+
+          run_test! do
+            results = json_response[:status][:data][:assets]
+            expect(results.all? { |a| a[:category] == 'monitor' }).to be true
+          end
+        end
+
+        response(200, 'filters by status') do
+          before do
+            create(:asset, :assigned)
+            create(:asset)
+          end
+          let(:status) { 'assigned' }
+
+          run_test! do
+            results = json_response[:status][:data][:assets]
+            expect(results.all? { |a| a[:status] == 'assigned' }).to be true
+          end
+        end
+
+        response(200, 'filters by location') do
+          before do
+            create(:asset, location: 'Cebu Office')
+            create(:asset, location: 'Manila HQ')
+          end
+          let(:location) { 'Cebu' }
+
+          run_test! do
+            results = json_response[:status][:data][:assets]
+            expect(results.length).to eq 1
+            expect(results.first[:location]).to eq 'Cebu Office'
+          end
+        end
+
+        response(200, 'filters by purchase date range') do
+          before do
+            create(:asset, purchase_date: '2025-01-01')
+            create(:asset, purchase_date: '2026-06-01')
+          end
+          let(:purchase_date_from) { '2026-01-01' }
+          let(:purchase_date_to) { '2026-12-31' }
+
+          run_test! do
+            results = json_response[:status][:data][:assets]
+            expect(results.length).to eq 1
+          end
+        end
+      end
+    end
+  end
+
+  describe '#export' do
+    path '/api/v1/assets/export' do
+      get 'exports assets as CSV' do
+        tags 'Assets'
+        security [ bearerAuth: [] ]
+        parameter name: :q, in: :query, type: :string, required: false
+        parameter name: :category, in: :query, type: :string, required: false
+        parameter name: :status, in: :query, type: :string, required: false
+
+        response(200, 'returns CSV for manager') do
+          before do
+            create_list(:asset, 2)
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(response.content_type).to include('text/csv')
+            rows = CSV.parse(response.body, headers: true)
+            expect(rows.length).to eq 2
+            expect(rows.headers).to include('asset_code', 'name', 'status')
+          end
+        end
+
+        response(200, 'exports only filtered results') do
+          before do
+            create(:asset, :laptop)
+            create(:asset, :monitor)
+            sign_in manager
+          end
+          let(:category) { 'laptop' }
+
+          run_test! do |response|
+            rows = CSV.parse(response.body, headers: true)
+            expect(rows.length).to eq 1
+            expect(rows.first['category']).to eq 'laptop'
+          end
+        end
+
+        response(401, 'unauthenticated') do
+          run_test! do |response|
+            expect(response).to have_http_status :unauthorized
+          end
+        end
+      end
+    end
+  end
+
   describe '#update' do
     let(:asset) { create(:asset) }
 
