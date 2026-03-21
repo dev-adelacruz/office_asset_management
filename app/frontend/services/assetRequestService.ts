@@ -1,4 +1,14 @@
-import { AssetRequest, AssetRequestWithTimeline } from '../interfaces/state/assetRequestState';
+import { AssetRequest, AssetRequestPagination, AssetRequestWithTimeline } from '../interfaces/state/assetRequestState';
+
+export interface FetchAssetRequestsParams {
+  page?: number;
+  per_page?: number;
+}
+
+export interface ListAssetRequestsResult {
+  requests: AssetRequest[];
+  pagination: AssetRequestPagination;
+}
 
 export interface CreateAssetRequestParams {
   asset_type: string;
@@ -11,8 +21,15 @@ export interface CreateAssetRequestParams {
 class AssetRequestService {
   private baseURL = '/api/v1';
 
-  async listAssetRequests(token: string): Promise<AssetRequest[]> {
-    const response = await fetch(`${this.baseURL}/asset_requests`, {
+  async listAssetRequests(token: string, params?: FetchAssetRequestsParams): Promise<ListAssetRequestsResult> {
+    const url = new URL(`${this.baseURL}/asset_requests`, window.location.origin);
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+      });
+    }
+
+    const response = await fetch(url.pathname + url.search, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -26,7 +43,10 @@ class AssetRequestService {
     }
 
     const data = await response.json();
-    return data.status?.data?.asset_requests ?? [];
+    return {
+      requests: data.status?.data?.asset_requests ?? [],
+      pagination: data.status?.data?.pagination ?? { current_page: 1, total_pages: 1, total_count: 0, per_page: 25 },
+    };
   }
 
   async updateAssetRequest(

@@ -13,6 +13,7 @@ import { RootState } from '../../state/store';
 import { AssetRequest, AssetRequestStatus, AssetRequestUrgency, AssetRequestStatusLog } from '../../interfaces/state/assetRequestState';
 import { CreateAssetRequestParams } from '../../services/assetRequestService';
 import AppLayout from '../../components/layout/AppLayout';
+import Pagination from '../../components/Pagination';
 import { Plus, ClipboardList, X, AlertTriangle, CheckCircle, Clock, ThumbsUp, ThumbsDown, History } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -378,17 +379,18 @@ const TimelineDrawer: React.FC<TimelineDrawerProps> = ({ onClose }) => {
 
 const RequestsPage: React.FC = () => {
   const dispatch = useDispatch();
-  const { requests, isLoading, isUpdating, error } = useSelector((s: RootState) => s.assetRequests);
+  const { requests, pagination, isLoading, isUpdating, error } = useSelector((s: RootState) => s.assetRequests);
   const user = useSelector((s: RootState) => s.user.user);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<AssetRequest | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const isManager = user?.role === 'manager' || user?.role === 'executive';
 
   useEffect(() => {
-    (dispatch as any)(fetchAssetRequests());
-  }, [dispatch]);
+    (dispatch as any)(fetchAssetRequests({ page: currentPage, per_page: 25 }));
+  }, [dispatch, currentPage]);
 
   const handleApprove = async (req: AssetRequest) => {
     await (dispatch as any)(updateAssetRequest({ requestId: req.id, params: { status: 'approved' } }));
@@ -530,6 +532,17 @@ const RequestsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* Pagination */}
+        {pagination && (
+          <Pagination
+            currentPage={pagination.current_page}
+            totalPages={pagination.total_pages}
+            onPageChange={(page) => setCurrentPage(page)}
+            totalCount={pagination.total_count}
+            perPage={pagination.per_page}
+          />
         )}
       </div>
 
