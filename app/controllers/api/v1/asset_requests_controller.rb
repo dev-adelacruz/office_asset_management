@@ -2,7 +2,7 @@
 
 class Api::V1::AssetRequestsController < Api::BaseController
   before_action :require_manager_or_executive!, only: [ :update ]
-  before_action :set_asset_request, only: [ :update ]
+  before_action :set_asset_request, only: [ :show, :update ]
 
   def index
     requests = if current_user.role.in?(%w[manager executive])
@@ -20,10 +20,26 @@ class Api::V1::AssetRequestsController < Api::BaseController
     }, status: :ok
   end
 
+  def show
+    render json: {
+      status: {
+        code: 200,
+        message: "Asset request retrieved successfully.",
+        data: { asset_request: AssetRequestBlueprint.render_as_hash(@asset_request, view: :with_timeline) }
+      }
+    }, status: :ok
+  end
+
   def create
     request = current_user.asset_requests.new(asset_request_params)
 
     if request.save
+      request.asset_request_status_logs.create!(
+        changed_by: current_user,
+        from_status: nil,
+        to_status: request.status
+      )
+
       render json: {
         status: {
           code: 201,
@@ -49,7 +65,15 @@ class Api::V1::AssetRequestsController < Api::BaseController
       }, status: :unprocessable_entity
     end
 
+    old_status = @asset_request.status
+
     if @asset_request.update(approval_params)
+      @asset_request.asset_request_status_logs.create!(
+        changed_by: current_user,
+        from_status: old_status,
+        to_status: @asset_request.status
+      )
+
       render json: {
         status: {
           code: 200,

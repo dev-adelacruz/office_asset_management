@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "asset_request_status_logs", force: :cascade do |t|
+    t.bigint "asset_request_id", null: false
+    t.bigint "changed_by_id", null: false
+    t.datetime "created_at", null: false
+    t.string "from_status"
+    t.string "to_status", null: false
+    t.datetime "updated_at", null: false
+    t.index ["asset_request_id"], name: "index_asset_request_status_logs_on_asset_request_id"
+    t.index ["changed_by_id"], name: "index_asset_request_status_logs_on_changed_by_id"
+    t.index ["created_at"], name: "index_asset_request_status_logs_on_created_at"
+  end
 
   create_table "asset_requests", force: :cascade do |t|
     t.string "asset_type", null: false
@@ -110,6 +122,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_180000) do
     t.index ["role"], name: "index_users_on_role"
   end
 
+  add_foreign_key "asset_request_status_logs", "asset_requests"
+  add_foreign_key "asset_request_status_logs", "users", column: "changed_by_id"
   add_foreign_key "asset_requests", "users"
   add_foreign_key "asset_status_logs", "assets"
   add_foreign_key "asset_status_logs", "users", column: "changed_by_id"

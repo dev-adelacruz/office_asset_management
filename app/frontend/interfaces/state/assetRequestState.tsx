@@ -9,6 +9,14 @@ export interface AssetRequestUser {
   role: string;
 }
 
+export interface AssetRequestStatusLog {
+  id: number;
+  from_status: string | null;
+  to_status: string;
+  created_at: string;
+  changed_by: AssetRequestUser;
+}
+
 export interface AssetRequest {
   id: number;
   asset_type: AssetRequestType;
@@ -22,10 +30,19 @@ export interface AssetRequest {
   updated_at: string;
 }
 
+export interface AssetRequestWithTimeline extends AssetRequest {
+  status_logs: AssetRequestStatusLog[];
+}
+
 export interface AssetRequestState {
   requests: AssetRequest[];
+  currentRequest: AssetRequestWithTimeline | null;
   isLoading: boolean;
+  isFetchingTimeline: boolean;
   isCreating: boolean;
+  isUpdating: boolean;
   error: string | null;
+  timelineError: string | null;
   createError: string | null;
+  updateError: string | null;
 }

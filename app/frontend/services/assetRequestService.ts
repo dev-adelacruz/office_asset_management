@@ -1,4 +1,4 @@
-import { AssetRequest } from '../interfaces/state/assetRequestState';
+import { AssetRequest, AssetRequestWithTimeline } from '../interfaces/state/assetRequestState';
 
 export interface CreateAssetRequestParams {
   asset_type: string;
@@ -46,6 +46,24 @@ class AssetRequestService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `Failed to update asset request (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.asset_request;
+  }
+
+  async getAssetRequest(id: number, token: string): Promise<AssetRequestWithTimeline> {
+    const response = await fetch(`${this.baseURL}/asset_requests/${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch asset request (${response.status})`);
     }
 
     const data = await response.json();

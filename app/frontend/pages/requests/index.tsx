@@ -2,16 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchAssetRequests,
+  fetchAssetRequest,
   createAssetRequest,
   updateAssetRequest,
   clearCreateError,
   clearUpdateError,
+  clearCurrentRequest,
 } from '../../state/assetRequests/assetRequestSlice';
 import { RootState } from '../../state/store';
-import { AssetRequest, AssetRequestStatus, AssetRequestUrgency } from '../../interfaces/state/assetRequestState';
+import { AssetRequest, AssetRequestStatus, AssetRequestUrgency, AssetRequestStatusLog } from '../../interfaces/state/assetRequestState';
 import { CreateAssetRequestParams } from '../../services/assetRequestService';
 import AppLayout from '../../components/layout/AppLayout';
-import { Plus, ClipboardList, X, AlertTriangle, CheckCircle, Clock, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Plus, ClipboardList, X, AlertTriangle, CheckCircle, Clock, ThumbsUp, ThumbsDown, History } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -268,6 +270,110 @@ const SubmitRequestModal: React.FC<SubmitRequestModalProps> = ({ onClose }) => {
   );
 };
 
+// ─── TimelineDrawer ───────────────────────────────────────────────────────────
+
+interface TimelineDrawerProps {
+  onClose: () => void;
+}
+
+const TimelineDrawer: React.FC<TimelineDrawerProps> = ({ onClose }) => {
+  const dispatch = useDispatch();
+  const { currentRequest, isFetchingTimeline, timelineError } = useSelector((s: RootState) => s.assetRequests);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(() => {
+      dispatch(clearCurrentRequest());
+      onClose();
+    }, 250);
+  };
+
+  return (
+    <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-250 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
+      <div className={`relative bg-white w-full max-w-sm shadow-2xl flex flex-col transition-transform duration-250 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-gray-500" />
+            <h2 className="text-base font-semibold text-gray-900">Status Timeline</h2>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Request summary */}
+        {currentRequest && (
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 shrink-0">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Request</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{currentRequest.justification}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-xs text-gray-500 capitalize">{currentRequest.asset_type}</span>
+              <span className="text-gray-300">·</span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[currentRequest.status]}`}>
+                {STATUS_ICONS[currentRequest.status]}
+                {STATUS_LABELS[currentRequest.status]}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Timeline body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {isFetchingTimeline ? (
+            <div className="flex justify-center py-12">
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : timelineError ? (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700">{timelineError}</p>
+            </div>
+          ) : currentRequest?.status_logs?.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-12">No status history yet.</p>
+          ) : (
+            <ol className="relative border-l border-gray-200 space-y-6 ml-2">
+              {currentRequest?.status_logs?.map((log: AssetRequestStatusLog) => (
+                <li key={log.id} className="ml-5">
+                  <div className="absolute -left-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white ring-1 ring-blue-200 mt-1" />
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">
+                      {new Date(log.created_at).toLocaleString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: 'numeric', minute: '2-digit',
+                      })}
+                    </p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {log.from_status ? (
+                        <span>
+                          <span className="capitalize">{log.from_status}</span>
+                          <span className="text-gray-400 mx-1">→</span>
+                          <span className="capitalize">{log.to_status}</span>
+                        </span>
+                      ) : (
+                        <span className="capitalize">{log.to_status}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      by {log.changed_by.name ?? log.changed_by.email}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── RequestsPage ─────────────────────────────────────────────────────────────
 
 const RequestsPage: React.FC = () => {
@@ -276,6 +382,7 @@ const RequestsPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.user.user);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<AssetRequest | null>(null);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const isManager = user?.role === 'manager' || user?.role === 'executive';
 
@@ -285,6 +392,11 @@ const RequestsPage: React.FC = () => {
 
   const handleApprove = async (req: AssetRequest) => {
     await (dispatch as any)(updateAssetRequest({ requestId: req.id, params: { status: 'approved' } }));
+  };
+
+  const handleViewTimeline = (req: AssetRequest) => {
+    (dispatch as any)(fetchAssetRequest(req.id));
+    setShowTimeline(true);
   };
 
   return (
@@ -333,6 +445,7 @@ const RequestsPage: React.FC = () => {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Date</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Submitted</th>
+                  <th className="px-5 py-3" />
                   {isManager && <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>}
                 </tr>
               </thead>
@@ -377,6 +490,15 @@ const RequestsPage: React.FC = () => {
                     <td className="px-5 py-3.5 text-gray-400 text-xs whitespace-nowrap">
                       {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
+                    <td className="px-5 py-3.5">
+                      <button
+                        onClick={() => handleViewTimeline(req)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="View timeline"
+                      >
+                        <History className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
                     {isManager && (
                       <td className="px-5 py-3.5">
                         {req.status === 'pending' ? (
@@ -413,6 +535,7 @@ const RequestsPage: React.FC = () => {
 
       {showSubmitModal && <SubmitRequestModal onClose={() => setShowSubmitModal(false)} />}
       {rejectTarget && <RejectModal request={rejectTarget} onClose={() => setRejectTarget(null)} />}
+      {showTimeline && <TimelineDrawer onClose={() => setShowTimeline(false)} />}
     </AppLayout>
   );
 };

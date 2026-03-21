@@ -3,6 +3,8 @@
 class AssetRequest < ApplicationRecord
   belongs_to :user
 
+  has_many :asset_request_status_logs, dependent: :destroy
+
   ASSET_TYPES = %w[physical software].freeze
   URGENCIES = %w[low medium high].freeze
   STATUSES = %w[pending approved rejected].freeze
