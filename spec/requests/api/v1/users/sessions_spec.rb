@@ -53,6 +53,7 @@ RSpec.describe 'Sessions' do
     path '/api/v1/users/sign_out' do
       delete 'logs out user' do
         tags 'Sessions'
+        security [ bearerAuth: [] ]
         consumes 'application/json'
 
         response(200, 'logouts new user successfully') do

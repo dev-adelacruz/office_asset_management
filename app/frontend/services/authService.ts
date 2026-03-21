@@ -54,11 +54,12 @@ class AuthService {
     }
   }
 
-  async logout(): Promise<void> {
+  async logout(token: string): Promise<void> {
     try {
       const response = await fetch(`${this.baseURL}/users/sign_out`, {
         method: 'DELETE',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
