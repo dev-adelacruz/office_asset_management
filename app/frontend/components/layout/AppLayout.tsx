@@ -5,7 +5,7 @@ import { logoutUser } from '../../state/user/userSlice';
 import { RootState } from '../../state/store';
 import {
   LayoutDashboard, User, Settings, LogOut, Bell,
-  ChevronDown, Zap,
+  ChevronDown, Zap, Package,
 } from 'lucide-react';
 
 interface AppLayoutProps {
@@ -15,6 +15,7 @@ interface AppLayoutProps {
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+  { label: 'Assets', icon: Package, path: '/assets' },
   { label: 'Profile', icon: User, path: '/profile' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ];
@@ -62,7 +63,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
         {/* Nav */}
         <nav className="flex-1 px-3 py-5 space-y-1">
           {navItems.map(({ label, icon: Icon, path }) => {
-            const active = location.pathname === path;
+            const active = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
             return (
               <button
                 key={label}

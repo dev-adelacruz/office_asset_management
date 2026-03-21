@@ -10,9 +10,31 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "assets", force: :cascade do |t|
+    t.string "asset_code", null: false
+    t.string "category", null: false
+    t.string "condition", null: false
+    t.datetime "created_at", null: false
+    t.string "location"
+    t.string "manufacturer"
+    t.string "model"
+    t.string "name", null: false
+    t.text "notes"
+    t.decimal "purchase_cost", precision: 10, scale: 2, null: false
+    t.date "purchase_date", null: false
+    t.string "serial_number", null: false
+    t.string "status", default: "available", null: false
+    t.datetime "updated_at", null: false
+    t.date "warranty_expiry"
+    t.index ["asset_code"], name: "index_assets_on_asset_code", unique: true
+    t.index ["category"], name: "index_assets_on_category"
+    t.index ["serial_number"], name: "index_assets_on_serial_number", unique: true
+    t.index ["status"], name: "index_assets_on_status"
+  end
 
   create_table "users", force: :cascade do |t|
     t.string "avatar_url"
