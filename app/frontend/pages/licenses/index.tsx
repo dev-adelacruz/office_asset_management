@@ -4,11 +4,14 @@ import {
   fetchLicenses,
   createLicense,
   updateLicense,
+  assignSeat,
+  releaseSeat,
   clearCreateError,
   clearEditError,
+  clearSeatError,
 } from '../../state/licenses/licenseSlice';
 import { RootState } from '../../state/store';
-import { License, LicenseStatus } from '../../interfaces/state/licenseState';
+import { License, LicenseSeat, LicenseStatus } from '../../interfaces/state/licenseState';
 import { CreateLicenseParams } from '../../services/licenseService';
 import AppLayout from '../../components/layout/AppLayout';
 import {
@@ -21,6 +24,9 @@ import {
   X,
   Eye,
   EyeOff,
+  Users,
+  UserMinus,
+  UserPlus,
 } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -372,6 +378,158 @@ const EditLicenseModal: React.FC<EditLicenseModalProps> = ({ license, onClose })
   );
 };
 
+// ─── ManageSeatsModal ─────────────────────────────────────────────────────────
+
+interface ManageSeatsModalProps {
+  license: License;
+  onClose: () => void;
+}
+
+const ManageSeatsModal: React.FC<ManageSeatsModalProps> = ({ license: initialLicense, onClose }) => {
+  const dispatch = useDispatch();
+  const { isAssigning, seatError } = useSelector((s: RootState) => s.licenses);
+  const licenses = useSelector((s: RootState) => s.licenses.licenses);
+  const license = licenses.find((l) => l.id === initialLicense.id) ?? initialLicense;
+
+  const [visible, setVisible] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 200);
+    dispatch(clearSeatError());
+  };
+
+  const handleAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput.trim()) return;
+    const result = await dispatch(assignSeat({ licenseId: license.id, userEmail: emailInput.trim() }) as any);
+    if (!result.error) setEmailInput('');
+  };
+
+  const handleRelease = async (seat: LicenseSeat) => {
+    dispatch(releaseSeat({ licenseId: license.id, seatId: seat.id }) as any);
+  };
+
+  const utilizationPct = license.total_seats > 0
+    ? Math.round((license.seats_used / license.total_seats) * 100)
+    : 0;
+
+  const barColor = utilizationPct >= 100
+    ? 'bg-red-500'
+    : utilizationPct >= 75
+    ? 'bg-amber-400'
+    : 'bg-emerald-500';
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ${
+        visible ? 'bg-black/40' : 'bg-transparent'
+      }`}
+      onClick={(e) => e.target === e.currentTarget && handleClose()}
+    >
+      <div
+        className={`bg-white rounded-2xl shadow-2xl w-full max-w-md transition-all duration-200 ${
+          visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Manage Seats</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{license.software_name}</p>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 space-y-4">
+          {/* Utilization bar */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-gray-600">Seat utilization</span>
+              <span className="text-xs font-semibold text-gray-700">
+                {license.seats_used} / {license.total_seats} used ({utilizationPct}%)
+              </span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                style={{ width: `${Math.min(utilizationPct, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Error */}
+          {seatError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-50 border border-red-200">
+              <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{seatError}</p>
+            </div>
+          )}
+
+          {/* Assign form */}
+          <form onSubmit={handleAssign} className="flex gap-2">
+            <input
+              type="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              placeholder="user@company.com"
+              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={isAssigning || !emailInput.trim() || license.seats_available <= 0}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Assign
+            </button>
+          </form>
+
+          {/* Current assignments */}
+          <div className="space-y-1 max-h-52 overflow-y-auto">
+            {license.license_seats.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No seats assigned yet.</p>
+            ) : (
+              license.license_seats.map((seat) => (
+                <div key={seat.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {seat.user.name || seat.user.email}
+                    </p>
+                    {seat.user.name && (
+                      <p className="text-xs text-gray-400 truncate">{seat.user.email}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleRelease(seat)}
+                    disabled={isAssigning}
+                    className="ml-3 p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors shrink-0"
+                    title="Release seat"
+                  >
+                    <UserMinus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end px-6 py-4 border-t border-gray-100">
+          <button onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── SuccessToast ─────────────────────────────────────────────────────────────
 
 interface SuccessToastProps {
@@ -417,6 +575,7 @@ const LicensesPage: React.FC = () => {
 
   const [showRegister, setShowRegister] = useState(false);
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
+  const [managingLicense, setManagingLicense] = useState<License | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -559,7 +718,7 @@ const LicensesPage: React.FC = () => {
                 <tr className="border-b border-gray-100 bg-gray-50/60">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Software</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendor</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Seats</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Seats Used</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cost</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expiry</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
@@ -580,7 +739,28 @@ const LicensesPage: React.FC = () => {
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-gray-600">{license.vendor}</td>
-                      <td className="px-4 py-3.5 text-gray-700 font-medium">{license.total_seats.toLocaleString()}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="text-sm font-medium text-gray-700">
+                          {(license.seats_used ?? 0)}/{license.total_seats}
+                        </div>
+                        <div className="mt-1 h-1.5 w-20 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              (license.seats_used ?? 0) >= license.total_seats
+                                ? 'bg-red-500'
+                                : (license.seats_used ?? 0) / license.total_seats >= 0.75
+                                ? 'bg-amber-400'
+                                : 'bg-emerald-500'
+                            }`}
+                            style={{
+                              width: `${Math.min(
+                                Math.round(((license.seats_used ?? 0) / license.total_seats) * 100),
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </td>
                       <td className="px-4 py-3.5 text-gray-700">{formatCurrency(license.cost)}</td>
                       <td className="px-4 py-3.5">
                         <div className="text-gray-700">{formatDate(license.expiry_date)}</div>
@@ -603,13 +783,22 @@ const LicensesPage: React.FC = () => {
                       </td>
                       {canWrite && (
                         <td className="px-5 py-3.5 text-right">
-                          <button
-                            onClick={() => setEditingLicense(license)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                            title="Edit license"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setManagingLicense(license)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+                              title="Manage seats"
+                            >
+                              <Users className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setEditingLicense(license)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              title="Edit license"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -623,6 +812,7 @@ const LicensesPage: React.FC = () => {
 
       {showRegister && <RegisterLicenseModal onClose={() => setShowRegister(false)} />}
       {editingLicense && <EditLicenseModal license={editingLicense} onClose={() => setEditingLicense(null)} />}
+      {managingLicense && <ManageSeatsModal license={managingLicense} onClose={() => setManagingLicense(null)} />}
       {toast && <SuccessToast message={toast} onDismiss={() => setToast(null)} />}
     </AppLayout>
   );

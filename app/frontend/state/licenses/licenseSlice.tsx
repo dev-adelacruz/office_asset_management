@@ -42,6 +42,37 @@ export const updateLicense = createAsyncThunk(
   }
 );
 
+export const assignSeat = createAsyncThunk(
+  'licenses/assignSeat',
+  async (
+    { licenseId, userEmail }: { licenseId: number; userEmail: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      const result = await licenseService.assignSeat(licenseId, userEmail, token);
+      return result.license;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to assign seat');
+    }
+  }
+);
+
+export const releaseSeat = createAsyncThunk(
+  'licenses/releaseSeat',
+  async (
+    { licenseId, seatId }: { licenseId: number; seatId: number },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      return await licenseService.releaseSeat(licenseId, seatId, token);
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to release seat');
+    }
+  }
+);
+
 const licenseSlice = createSlice({
   name: 'licenses',
   initialState: {
@@ -49,9 +80,11 @@ const licenseSlice = createSlice({
     isLoading: false,
     isCreating: false,
     isEditing: false,
+    isAssigning: false,
     error: null as string | null,
     createError: null as string | null,
     editError: null as string | null,
+    seatError: null as string | null,
   },
   reducers: {
     clearCreateError: (state) => {
@@ -59,6 +92,9 @@ const licenseSlice = createSlice({
     },
     clearEditError: (state) => {
       state.editError = null;
+    },
+    clearSeatError: (state) => {
+      state.seatError = null;
     },
   },
   extraReducers: (builder) => {
@@ -101,8 +137,36 @@ const licenseSlice = createSlice({
       state.isEditing = false;
       state.editError = action.payload as string;
     });
+
+    builder.addCase(assignSeat.pending, (state) => {
+      state.isAssigning = true;
+      state.seatError = null;
+    });
+    builder.addCase(assignSeat.fulfilled, (state, action) => {
+      state.isAssigning = false;
+      const idx = state.licenses.findIndex((l) => l.id === action.payload.id);
+      if (idx !== -1) state.licenses[idx] = action.payload;
+    });
+    builder.addCase(assignSeat.rejected, (state, action) => {
+      state.isAssigning = false;
+      state.seatError = action.payload as string;
+    });
+
+    builder.addCase(releaseSeat.pending, (state) => {
+      state.isAssigning = true;
+      state.seatError = null;
+    });
+    builder.addCase(releaseSeat.fulfilled, (state, action) => {
+      state.isAssigning = false;
+      const idx = state.licenses.findIndex((l) => l.id === action.payload.id);
+      if (idx !== -1) state.licenses[idx] = action.payload;
+    });
+    builder.addCase(releaseSeat.rejected, (state, action) => {
+      state.isAssigning = false;
+      state.seatError = action.payload as string;
+    });
   },
 });
 
-export const { clearCreateError, clearEditError } = licenseSlice.actions;
+export const { clearCreateError, clearEditError, clearSeatError } = licenseSlice.actions;
 export default licenseSlice.reducer;
