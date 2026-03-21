@@ -25,6 +25,7 @@ class Asset < ApplicationRecord
   }
 
   has_many :asset_status_logs, dependent: :destroy
+  has_many :asset_assignment_logs, dependent: :destroy
 
   validates :name, presence: true
   validates :category, presence: true

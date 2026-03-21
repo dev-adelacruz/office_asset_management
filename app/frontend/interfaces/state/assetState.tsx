@@ -2,6 +2,23 @@ export type AssetCategory = 'laptop' | 'monitor' | 'peripheral' | 'furniture' | 
 export type AssetCondition = 'brand_new' | 'good' | 'fair' | 'poor';
 export type AssetStatus = 'available' | 'assigned' | 'under_maintenance' | 'retired' | 'lost';
 
+export interface AssetAssignmentUser {
+  id: number;
+  email: string;
+  name: string | null;
+  role: string;
+}
+
+export interface AssetAssignmentLog {
+  id: number;
+  assigned_at: string;
+  returned_at: string | null;
+  notes: string | null;
+  assigned_to: AssetAssignmentUser;
+  assigned_by: AssetAssignmentUser;
+  created_at: string;
+}
+
 export interface Asset {
   id: number;
   asset_code: string;
@@ -21,14 +38,21 @@ export interface Asset {
   updated_at: string;
 }
 
-interface AssetState {
+export interface AssetState {
   assets: Asset[];
+  assignmentLogs: AssetAssignmentLog[];
   isLoading: boolean;
   isCreating: boolean;
   isEditing: boolean;
   isUpdating: boolean;
+  isFetchingHistory: boolean;
+  isAssigning: boolean;
+  isReturning: boolean;
   error: string | null;
   createError: string | null;
   editError: string | null;
   updateError: string | null;
+  historyError: string | null;
+  assignError: string | null;
+  returnError: string | null;
 }

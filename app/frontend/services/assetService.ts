@@ -1,4 +1,10 @@
-import { Asset, AssetCategory, AssetCondition, AssetStatus } from '../interfaces/state/assetState';
+import { Asset, AssetAssignmentLog, AssetCategory, AssetCondition, AssetStatus } from '../interfaces/state/assetState';
+
+export interface CreateAssignmentLogParams {
+  assigned_to_id: number;
+  assigned_at: string;
+  notes?: string;
+}
 
 export interface CreateAssetParams {
   name: string;
@@ -90,6 +96,61 @@ class AssetService {
 
     const data = await response.json();
     return data.status?.data?.asset;
+  }
+
+  async listAssignmentLogs(assetId: number, token: string): Promise<AssetAssignmentLog[]> {
+    const response = await fetch(`${this.baseURL}/assets/${assetId}/assignment_logs`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch assignment history (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.assignment_logs ?? [];
+  }
+
+  async createAssignmentLog(assetId: number, params: CreateAssignmentLogParams, token: string): Promise<AssetAssignmentLog> {
+    const response = await fetch(`${this.baseURL}/assets/${assetId}/assignment_logs`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ assignment_log: params }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to assign asset (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.assignment_log;
+  }
+
+  async recordReturn(assetId: number, logId: number, token: string): Promise<AssetAssignmentLog> {
+    const response = await fetch(`${this.baseURL}/assets/${assetId}/assignment_logs/${logId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to record return (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.assignment_log;
   }
 }
 

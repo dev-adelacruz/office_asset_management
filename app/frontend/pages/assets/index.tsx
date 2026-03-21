@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../state/store';
-import { fetchAssets, createAsset, clearCreateError, updateAsset, clearEditError, updateAssetStatus, clearUpdateError } from '../../state/assets/assetSlice';
+import { fetchAssets, createAsset, clearCreateError, updateAsset, clearEditError, updateAssetStatus, clearUpdateError, fetchAssignmentLogs, assignAsset, recordAssetReturn, clearAssignError, clearReturnError, clearAssignmentLogs } from '../../state/assets/assetSlice';
 import AppLayout from '../../components/layout/AppLayout';
 import {
   Package, Plus, AlertCircle, Loader2, X, Hash,
   DollarSign, MapPin, FileText, CheckCircle, ChevronDown, AlertTriangle, Pencil,
-  Search, Download,
+  Search, Download, History, User, RotateCcw,
 } from 'lucide-react';
-import { Asset, AssetCategory, AssetCondition, AssetStatus } from '../../interfaces/state/assetState';
+import { Asset, AssetAssignmentLog, AssetCategory, AssetCondition, AssetStatus } from '../../interfaces/state/assetState';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -93,7 +93,8 @@ const AssetRow: React.FC<{
   canChangeStatus: boolean;
   onStatusClick: (asset: Asset) => void;
   onEditClick: (asset: Asset) => void;
-}> = ({ asset, canChangeStatus, onStatusClick, onEditClick }) => (
+  onHistoryClick: (asset: Asset) => void;
+}> = ({ asset, canChangeStatus, onStatusClick, onEditClick, onHistoryClick }) => (
   <tr className="group hover:bg-blue-50/40 transition-colors duration-100">
     <td className="px-5 py-3.5">
       <div className="flex items-center gap-3">
@@ -127,15 +128,24 @@ const AssetRow: React.FC<{
     </td>
     <td className="px-5 py-3.5 text-sm text-gray-400">{asset.location ?? '—'}</td>
     <td className="px-5 py-3.5">
-      {canChangeStatus && (
+      <div className="flex items-center gap-1">
         <button
-          onClick={() => onEditClick(asset)}
-          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors duration-150"
-          title="Edit asset"
+          onClick={() => onHistoryClick(asset)}
+          className="p-1.5 rounded-lg text-gray-300 hover:text-purple-500 hover:bg-purple-50 transition-colors duration-150"
+          title="Assignment history"
         >
-          <Pencil className="w-3.5 h-3.5" />
+          <History className="w-3.5 h-3.5" />
         </button>
-      )}
+        {canChangeStatus && (
+          <button
+            onClick={() => onEditClick(asset)}
+            className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors duration-150"
+            title="Edit asset"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     </td>
   </tr>
 );
@@ -741,6 +751,230 @@ const SuccessToast: React.FC<{ message: string; visible: boolean }> = ({ message
   </div>
 );
 
+// ─── AssignmentHistoryDrawer ──────────────────────────────────────────────────
+
+const AssignmentHistoryDrawer: React.FC<{
+  asset: Asset;
+  canAssign: boolean;
+  onClose: () => void;
+  onAssignClick: () => void;
+}> = ({ asset, canAssign, onClose, onAssignClick }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { assignmentLogs, isFetchingHistory, historyError, isReturning } = useSelector((s: RootState) => s.assets);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchAssignmentLogs(asset.id));
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(() => {
+      dispatch(clearAssignmentLogs());
+      onClose();
+    }, 250);
+  };
+
+  const handleReturn = (log: AssetAssignmentLog) => {
+    dispatch(recordAssetReturn({ assetId: asset.id, logId: log.id }));
+  };
+
+  return (
+    <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-250 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
+      <div className={`relative bg-white w-full max-w-sm shadow-2xl flex flex-col transition-transform duration-250 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-gray-500" />
+            <h2 className="text-base font-semibold text-gray-900">Assignment History</h2>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 shrink-0">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Asset</p>
+          <p className="text-sm font-semibold text-gray-900">{asset.name}</p>
+          <p className="text-xs font-mono text-gray-400 mt-0.5">{asset.asset_code}</p>
+          {canAssign && (
+            <button
+              onClick={onAssignClick}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            >
+              <User className="w-3 h-3" />
+              Assign to User
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {isFetchingHistory ? (
+            <div className="flex justify-center py-12">
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : historyError ? (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700">{historyError}</p>
+            </div>
+          ) : assignmentLogs.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-12">No assignment history yet.</p>
+          ) : (
+            <ol className="relative border-l border-gray-200 space-y-6 ml-2">
+              {assignmentLogs.map((log: AssetAssignmentLog) => (
+                <li key={log.id} className="ml-5">
+                  <div className={`absolute -left-1.5 w-3 h-3 rounded-full border-2 border-white ring-1 mt-1 ${log.returned_at ? 'bg-gray-400 ring-gray-200' : 'bg-blue-500 ring-blue-200'}`} />
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">
+                      {new Date(log.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {log.returned_at && (
+                        <span className="ml-1">→ {new Date(log.returned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      )}
+                    </p>
+                    <p className="text-sm font-medium text-gray-900">{log.assigned_to.name ?? log.assigned_to.email}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">assigned by {log.assigned_by.name ?? log.assigned_by.email}</p>
+                    {log.notes && <p className="text-xs text-gray-500 mt-1 italic">"{log.notes}"</p>}
+                    {!log.returned_at && canAssign && (
+                      <button
+                        onClick={() => handleReturn(log)}
+                        disabled={isReturning}
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium disabled:opacity-50 transition-colors"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Record Return
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── AssignAssetModal ─────────────────────────────────────────────────────────
+
+const AssignAssetModal: React.FC<{
+  asset: Asset;
+  onClose: () => void;
+}> = ({ asset, onClose }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAssigning, assignError } = useSelector((s: RootState) => s.assets);
+  const [visible, setVisible] = useState(false);
+  const [assignedToId, setAssignedToId] = useState('');
+  const [assignedAt, setAssignedAt] = useState(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(() => {
+      dispatch(clearAssignError());
+      onClose();
+    }, 200);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = await (dispatch as any)(assignAsset({
+      assetId: asset.id,
+      params: {
+        assigned_to_id: Number(assignedToId),
+        assigned_at: assignedAt,
+        ...(notes && { notes }),
+      },
+    }));
+    if (!result.error) handleClose();
+  };
+
+  return (
+    <div className={`fixed inset-0 z-[60] flex items-center justify-center transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
+      <div className={`relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transition-all duration-200 ${visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Assign Asset</h2>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
+            <p className="font-medium text-gray-900">{asset.name}</p>
+            <p className="text-xs font-mono text-gray-400 mt-0.5">{asset.asset_code}</p>
+          </div>
+
+          {assignError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-50 border border-red-200">
+              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700">{assignError}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              User ID <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              value={assignedToId}
+              onChange={(e) => setAssignedToId(e.target.value)}
+              placeholder="Enter user ID"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Assignment Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={assignedAt}
+              onChange={(e) => setAssignedAt(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Optional notes..."
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={handleClose} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isAssigning}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {isAssigning ? 'Assigning…' : 'Assign Asset'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const AssetsPage: React.FC = () => {
@@ -773,6 +1007,10 @@ const AssetsPage: React.FC = () => {
   const [statusModalAsset, setStatusModalAsset] = useState<Asset | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
+
+  // Assignment history state
+  const [historyAsset, setHistoryAsset] = useState<Asset | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   const [toast, setToast] = useState({ visible: false, message: '' });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -899,6 +1137,7 @@ const AssetsPage: React.FC = () => {
   ];
 
   return (
+    <>
     <AppLayout title="Assets">
       <SuccessToast visible={toast.visible} message={toast.message} />
 
@@ -1107,6 +1346,7 @@ const AssetsPage: React.FC = () => {
                     canChangeStatus={canChangeStatus}
                     onStatusClick={openStatusModal}
                     onEditClick={openEditModal}
+                    onHistoryClick={(a) => setHistoryAsset(a)}
                   />
                 ))}
               </tbody>
@@ -1116,6 +1356,22 @@ const AssetsPage: React.FC = () => {
 
       </div>
     </AppLayout>
+
+    {historyAsset && (
+      <AssignmentHistoryDrawer
+        asset={historyAsset}
+        canAssign={canCreate}
+        onClose={() => setHistoryAsset(null)}
+        onAssignClick={() => setShowAssignModal(true)}
+      />
+    )}
+    {showAssignModal && historyAsset && (
+      <AssignAssetModal
+        asset={historyAsset}
+        onClose={() => setShowAssignModal(false)}
+      />
+    )}
+    </>
   );
 };
 
