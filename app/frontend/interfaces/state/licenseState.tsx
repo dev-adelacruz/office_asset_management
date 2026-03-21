@@ -35,8 +35,16 @@ export interface License {
   updated_at: string;
 }
 
+export interface LicensePagination {
+  current_page: number;
+  total_pages: number;
+  total_count: number;
+  per_page: number;
+}
+
 export interface LicenseState {
   licenses: License[];
+  pagination: LicensePagination | null;
   isLoading: boolean;
   isCreating: boolean;
   isEditing: boolean;

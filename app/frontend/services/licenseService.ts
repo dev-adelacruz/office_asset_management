@@ -1,4 +1,16 @@
-import { License, LicenseSeat } from '../interfaces/state/licenseState';
+import { License, LicensePagination, LicenseSeat } from '../interfaces/state/licenseState';
+
+export interface FetchLicensesParams {
+  page?: number;
+  per_page?: number;
+  q?: string;
+  status?: string;
+}
+
+export interface ListLicensesResult {
+  licenses: License[];
+  pagination: LicensePagination;
+}
 
 export interface CreateLicenseParams {
   software_name: string;
@@ -15,8 +27,15 @@ export interface CreateLicenseParams {
 class LicenseService {
   private baseURL = '/api/v1';
 
-  async listLicenses(token: string): Promise<License[]> {
-    const response = await fetch(`${this.baseURL}/licenses`, {
+  async listLicenses(token: string, params?: FetchLicensesParams): Promise<ListLicensesResult> {
+    const url = new URL(`${this.baseURL}/licenses`, window.location.origin);
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
+      });
+    }
+
+    const response = await fetch(url.pathname + url.search, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -30,7 +49,10 @@ class LicenseService {
     }
 
     const data = await response.json();
-    return data.status?.data?.licenses ?? [];
+    return {
+      licenses: data.status?.data?.licenses ?? [],
+      pagination: data.status?.data?.pagination ?? { current_page: 1, total_pages: 1, total_count: 0, per_page: 25 },
+    };
   }
 
   async createLicense(params: CreateLicenseParams, token: string): Promise<License> {

@@ -14,6 +14,7 @@ import { RootState } from '../../state/store';
 import { License, LicenseSeat, LicenseStatus } from '../../interfaces/state/licenseState';
 import { CreateLicenseParams } from '../../services/licenseService';
 import AppLayout from '../../components/layout/AppLayout';
+import Pagination from '../../components/Pagination';
 import {
   Plus,
   Pencil,
@@ -570,7 +571,7 @@ const SuccessToast: React.FC<SuccessToastProps> = ({ message, onDismiss }) => {
 
 const LicensesPage: React.FC = () => {
   const dispatch = useDispatch();
-  const { licenses, isLoading, error } = useSelector((s: RootState) => s.licenses);
+  const { licenses, pagination, isLoading, error } = useSelector((s: RootState) => s.licenses);
   const user = useSelector((s: RootState) => s.user.user);
 
   const [showRegister, setShowRegister] = useState(false);
@@ -579,14 +580,15 @@ const LicensesPage: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const prevLicensesRef = useRef<License[]>([]);
 
   const canWrite = user?.role === 'manager' || user?.role === 'executive';
 
   useEffect(() => {
-    dispatch(fetchLicenses() as any);
-  }, [dispatch]);
+    dispatch(fetchLicenses({ page: currentPage, per_page: 25, q: searchQuery || undefined, status: filterStatus || undefined }) as any);
+  }, [dispatch, currentPage, searchQuery, filterStatus]);
 
   useEffect(() => {
     if (prevLicensesRef.current.length > 0) {
@@ -603,21 +605,8 @@ const LicensesPage: React.FC = () => {
     prevLicensesRef.current = licenses;
   }, [licenses]);
 
-  const filteredLicenses = licenses.filter((l) => {
-    if (filterStatus && l.status !== filterStatus) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        l.software_name.toLowerCase().includes(q) ||
-        l.vendor.toLowerCase().includes(q) ||
-        (l.purchase_order_number?.toLowerCase().includes(q) ?? false)
-      );
-    }
-    return true;
-  });
-
   const stats = {
-    total: licenses.length,
+    total: pagination?.total_count ?? licenses.length,
     active: licenses.filter((l) => l.status === 'active').length,
     expiring: licenses.filter((l) => l.status === 'expiring_soon').length,
     expired: licenses.filter((l) => l.status === 'expired').length,
@@ -641,7 +630,7 @@ const LicensesPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500">
-              {licenses.length} license{licenses.length !== 1 ? 's' : ''} registered
+              {stats.total} license{stats.total !== 1 ? 's' : ''} registered
             </p>
           </div>
           {canWrite && (
@@ -675,13 +664,13 @@ const LicensesPage: React.FC = () => {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             placeholder="Search software, vendor, PO..."
             className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-colors"
           />
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-colors"
           >
             <option value="">All statuses</option>
@@ -691,7 +680,7 @@ const LicensesPage: React.FC = () => {
           </select>
           {(searchQuery || filterStatus) && (
             <button
-              onClick={() => { setSearchQuery(''); setFilterStatus(''); }}
+              onClick={() => { setSearchQuery(''); setFilterStatus(''); setCurrentPage(1); }}
               className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors"
             >
               Clear
@@ -705,11 +694,11 @@ const LicensesPage: React.FC = () => {
             <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Loading licenses...</div>
           ) : error ? (
             <div className="flex items-center justify-center h-48 text-red-500 text-sm">{error}</div>
-          ) : filteredLicenses.length === 0 ? (
+          ) : licenses.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-gray-400">
               <ShieldCheck className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm font-medium">
-                {licenses.length === 0 ? 'No licenses registered yet' : 'No licenses match your filters'}
+                {!searchQuery && !filterStatus ? 'No licenses registered yet' : 'No licenses match your filters'}
               </p>
             </div>
           ) : (
@@ -728,7 +717,7 @@ const LicensesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredLicenses.map((license) => {
+                {licenses.map((license) => {
                   const days = daysUntilExpiry(license.expiry_date);
                   return (
                     <tr key={license.id} className="hover:bg-gray-50/60 transition-colors">
@@ -808,6 +797,16 @@ const LicensesPage: React.FC = () => {
             </table>
           )}
         </div>
+
+        {pagination && (
+          <Pagination
+            currentPage={pagination.current_page}
+            totalPages={pagination.total_pages}
+            totalCount={pagination.total_count}
+            perPage={pagination.per_page}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       {showRegister && <RegisterLicenseModal onClose={() => setShowRegister(false)} />}
