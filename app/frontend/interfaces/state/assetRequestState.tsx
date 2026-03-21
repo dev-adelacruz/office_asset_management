@@ -34,8 +34,16 @@ export interface AssetRequestWithTimeline extends AssetRequest {
   status_logs: AssetRequestStatusLog[];
 }
 
+export interface AssetRequestPagination {
+  current_page: number;
+  total_pages: number;
+  total_count: number;
+  per_page: number;
+}
+
 export interface AssetRequestState {
   requests: AssetRequest[];
+  pagination: AssetRequestPagination | null;
   currentRequest: AssetRequestWithTimeline | null;
   isLoading: boolean;
   isFetchingTimeline: boolean;

@@ -5,17 +5,28 @@ class Api::V1::AssetRequestsController < Api::BaseController
   before_action :set_asset_request, only: [ :show, :update ]
 
   def index
-    requests = if current_user.role.in?(%w[manager executive])
-      AssetRequest.includes(:user).order(urgency_order_sql, created_at: :desc)
-    else
-      current_user.asset_requests.order(created_at: :desc)
-    end
+    per_page = params[:per_page].present? ? [ [ params[:per_page].to_i, 1 ].max, 100 ].min : 25
+    page     = params[:page].present? ? [ params[:page].to_i, 1 ].max : 1
+    offset   = (page - 1) * per_page
+
+    scope       = scoped_requests
+    total       = scope.count
+    requests    = scope.limit(per_page).offset(offset)
+    total_pages = (total.to_f / per_page).ceil
 
     render json: {
       status: {
         code: 200,
         message: "Asset requests retrieved successfully.",
-        data: { asset_requests: AssetRequestBlueprint.render_as_hash(requests) }
+        data: {
+          asset_requests: AssetRequestBlueprint.render_as_hash(requests),
+          pagination: {
+            current_page: page,
+            total_pages: total_pages,
+            total_count: total,
+            per_page: per_page
+          }
+        }
       }
     }, status: :ok
   end
@@ -90,6 +101,14 @@ class Api::V1::AssetRequestsController < Api::BaseController
   end
 
   private
+
+  def scoped_requests
+    if current_user.role.in?(%w[manager executive])
+      AssetRequest.includes(:user).order(urgency_order_sql, created_at: :desc)
+    else
+      current_user.asset_requests.order(created_at: :desc)
+    end
+  end
 
   def urgency_order_sql
     Arel.sql("CASE urgency WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END")

@@ -25,7 +25,10 @@ RSpec.describe 'Asset Requests' do
         tags 'Asset Requests'
         security [ bearerAuth: [] ]
 
-        response(200, 'manager sees all requests sorted by urgency') do
+        parameter name: :page, in: :query, type: :integer, required: false
+        parameter name: :per_page, in: :query, type: :integer, required: false
+
+        response(200, 'manager sees all requests sorted by urgency with pagination metadata') do
           before do
             create(:asset_request, urgency: 'low')
             create(:asset_request, urgency: 'high')
@@ -38,6 +41,9 @@ RSpec.describe 'Asset Requests' do
             expect(json_response[:status][:code]).to eq 200
             urgencies = json_response[:status][:data][:asset_requests].map { |r| r[:urgency] }
             expect(urgencies).to eq %w[high medium low]
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:total_count]).to eq 3
+            expect(pagination[:current_page]).to eq 1
           end
         end
 
@@ -51,6 +57,7 @@ RSpec.describe 'Asset Requests' do
           run_test! do |response|
             expect(response).to have_http_status :ok
             expect(json_response[:status][:data][:asset_requests].length).to eq 1
+            expect(json_response[:status][:data][:pagination][:total_count]).to eq 1
           end
         end
 
@@ -63,6 +70,43 @@ RSpec.describe 'Asset Requests' do
           run_test! do |response|
             expect(response).to have_http_status :ok
             expect(json_response[:status][:data][:asset_requests].length).to eq 2
+            expect(json_response[:status][:data][:pagination][:total_count]).to eq 2
+          end
+        end
+
+        response(200, 'paginates results for manager') do
+          let(:page) { 2 }
+          let(:per_page) { 2 }
+
+          before do
+            create_list(:asset_request, 5)
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:asset_requests].length).to eq 2
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:current_page]).to eq 2
+            expect(pagination[:total_count]).to eq 5
+            expect(pagination[:total_pages]).to eq 3
+          end
+        end
+
+        response(200, 'employee pagination only counts their own requests') do
+          let(:page) { 1 }
+          let(:per_page) { 2 }
+
+          before do
+            create_list(:asset_request, 3, user: employee)
+            create_list(:asset_request, 2)
+            sign_in employee
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:asset_requests].length).to eq 2
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:total_count]).to eq 3
+            expect(pagination[:total_pages]).to eq 2
           end
         end
 

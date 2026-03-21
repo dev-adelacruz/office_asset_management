@@ -1,14 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { assetRequestService, CreateAssetRequestParams } from '../../services/assetRequestService';
-import { AssetRequest, AssetRequestWithTimeline } from '../../interfaces/state/assetRequestState';
+import { assetRequestService, CreateAssetRequestParams, FetchAssetRequestsParams } from '../../services/assetRequestService';
+import { AssetRequest, AssetRequestPagination, AssetRequestWithTimeline } from '../../interfaces/state/assetRequestState';
 import { RootState } from '../store';
 
 export const fetchAssetRequests = createAsyncThunk(
   'assetRequests/fetchAll',
-  async (_, { getState, rejectWithValue }) => {
+  async (params: FetchAssetRequestsParams | undefined, { getState, rejectWithValue }) => {
     try {
       const token = (getState() as RootState).user.token ?? '';
-      return await assetRequestService.listAssetRequests(token);
+      return await assetRequestService.listAssetRequests(token, params);
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch asset requests');
     }
@@ -58,6 +58,7 @@ const assetRequestSlice = createSlice({
   name: 'assetRequests',
   initialState: {
     requests: [] as AssetRequest[],
+    pagination: null as AssetRequestPagination | null,
     currentRequest: null as AssetRequestWithTimeline | null,
     isLoading: false,
     isFetchingTimeline: false,
@@ -87,7 +88,8 @@ const assetRequestSlice = createSlice({
     });
     builder.addCase(fetchAssetRequests.fulfilled, (state, action) => {
       state.isLoading = false;
-      state.requests = action.payload;
+      state.requests = action.payload.requests;
+      state.pagination = action.payload.pagination;
     });
     builder.addCase(fetchAssetRequests.rejected, (state, action) => {
       state.isLoading = false;
