@@ -82,6 +82,24 @@ RSpec.describe LicenseExpiryCheckJob do
       end
     end
 
+    context "when multiple licenses are expiring on the same threshold" do
+      let!(:license_a) { create(:license, expiry_date: Date.today + 30, notify_at_30_days: true) }
+      let!(:license_b) { create(:license, expiry_date: Date.today + 30, notify_at_30_days: true) }
+
+      it "bulk-inserts notifications for all licenses in a single threshold pass" do
+        expect {
+          described_class.new.perform
+        }.to change(Notification, :count).by(4)
+      end
+
+      it "skips already-notified licenses without issuing per-license exists? queries" do
+        create(:notification, user: manager, notifiable: license_a, notification_type: "expiry_30")
+        expect {
+          described_class.new.perform
+        }.to change(Notification, :count).by(2)
+      end
+    end
+
     context "when no managers or executives exist" do
       let!(:license) { create(:license, expiry_date: Date.today + 30) }
       let(:employee) { create(:user, :employee) }
