@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useAppDispatch } from '../../state/hooks';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutUser } from '../../state/user/userSlice';
 import { fetchNotifications, markNotificationRead } from '../../state/notifications/notificationSlice';
@@ -25,7 +26,7 @@ const navItems = [
 ];
 
 const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector((state: RootState) => state.user.user);
@@ -36,7 +37,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
   const notifRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
-    dispatch(logoutUser() as any);
+    dispatch(logoutUser());
   };
 
   const initials = user?.name
@@ -46,7 +47,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
   const displayName = user?.name ?? user?.email ?? '';
 
   useEffect(() => {
-    dispatch(fetchNotifications() as any);
+    dispatch(fetchNotifications());
   }, [dispatch]);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
   }, []);
 
   const handleMarkRead = (id: number) => {
-    dispatch(markNotificationRead(id) as any);
+    dispatch(markNotificationRead(id));
   };
 
   return (

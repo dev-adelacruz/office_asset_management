@@ -1,15 +1,15 @@
 import { FC, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useAppDispatch } from './state/hooks';
 import { checkAuthStatus } from './state/user/userSlice';
 import AppRoutes from './routes';
 import './assets/styles/tailwind.css';
 
 export const App: FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     // Check authentication status when the app loads
-    dispatch(checkAuthStatus() as any);
+    dispatch(checkAuthStatus());
   }, [dispatch]);
 
   return (

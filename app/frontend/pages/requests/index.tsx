@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useAppDispatch } from '../../state/hooks';
 import {
   fetchAssetRequests,
   fetchAssetRequest,
@@ -50,7 +51,7 @@ interface RejectModalProps {
 }
 
 const RejectModal: React.FC<RejectModalProps> = ({ request, onClose }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { isUpdating, updateError } = useSelector((s: RootState) => s.assetRequests);
   const [visible, setVisible] = useState(false);
   const [notes, setNotes] = useState('');
@@ -67,7 +68,7 @@ const RejectModal: React.FC<RejectModalProps> = ({ request, onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await (dispatch as any)(
+    const result = await dispatch(
       updateAssetRequest({ requestId: request.id, params: { status: 'rejected', notes } })
     );
     if (!result.error) handleClose();
@@ -136,7 +137,7 @@ interface SubmitRequestModalProps {
 }
 
 const SubmitRequestModal: React.FC<SubmitRequestModalProps> = ({ onClose }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { isCreating, createError } = useSelector((s: RootState) => s.assetRequests);
   const [visible, setVisible] = useState(false);
   const [form, setForm] = useState({
@@ -166,7 +167,7 @@ const SubmitRequestModal: React.FC<SubmitRequestModalProps> = ({ onClose }) => {
       ...(form.preferred_fulfillment_date && { preferred_fulfillment_date: form.preferred_fulfillment_date }),
       ...(form.notes && { notes: form.notes }),
     };
-    const result = await (dispatch as any)(createAssetRequest(params));
+    const result = await dispatch(createAssetRequest(params));
     if (!result.error) handleClose();
   };
 
@@ -278,7 +279,7 @@ interface TimelineDrawerProps {
 }
 
 const TimelineDrawer: React.FC<TimelineDrawerProps> = ({ onClose }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { currentRequest, isFetchingTimeline, timelineError } = useSelector((s: RootState) => s.assetRequests);
   const [visible, setVisible] = useState(false);
 
@@ -378,7 +379,7 @@ const TimelineDrawer: React.FC<TimelineDrawerProps> = ({ onClose }) => {
 // ─── RequestsPage ─────────────────────────────────────────────────────────────
 
 const RequestsPage: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { requests, pagination, isLoading, isUpdating, error } = useSelector((s: RootState) => s.assetRequests);
   const user = useSelector((s: RootState) => s.user.user);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -389,15 +390,15 @@ const RequestsPage: React.FC = () => {
   const isManager = user?.role === 'manager' || user?.role === 'executive';
 
   useEffect(() => {
-    (dispatch as any)(fetchAssetRequests({ page: currentPage, per_page: 25 }));
+    dispatch(fetchAssetRequests({ page: currentPage, per_page: 25 }));
   }, [dispatch, currentPage]);
 
   const handleApprove = async (req: AssetRequest) => {
-    await (dispatch as any)(updateAssetRequest({ requestId: req.id, params: { status: 'approved' } }));
+    await dispatch(updateAssetRequest({ requestId: req.id, params: { status: 'approved' } }));
   };
 
   const handleViewTimeline = (req: AssetRequest) => {
-    (dispatch as any)(fetchAssetRequest(req.id));
+    dispatch(fetchAssetRequest(req.id));
     setShowTimeline(true);
   };
 
