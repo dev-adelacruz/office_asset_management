@@ -8,6 +8,7 @@ import LicensesPage from '../pages/licenses';
 import RequestsPage from '../pages/requests';
 import AuditLogsPage from '../pages/audit-logs';
 import ProtectedRoute from '../components/ProtectedRoute';
+import RoleProtectedRoute from '../components/RoleProtectedRoute';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -39,9 +40,9 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } />
         <Route path='/audit-logs' element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['executive']}>
             <AuditLogsPage/>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path='/login' element={<LoginPage/>} />
       </Routes>

@@ -23,9 +23,10 @@ export const loginUser = createAsyncThunk(
 
 export const logoutUser = createAsyncThunk(
   'user/logout',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
-      await authService.logout();
+      const token = (getState() as { user: UserState }).user.token ?? '';
+      await authService.logout(token);
       // Clear token from storage on logout
       tokenStorage.clearToken();
       return null;
