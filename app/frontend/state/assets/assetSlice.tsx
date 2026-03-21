@@ -1,15 +1,15 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { assetService, CreateAssetParams, CreateAssignmentLogParams } from '../../services/assetService';
+import { assetService, CreateAssetParams, CreateAssignmentLogParams, FetchAssetsParams } from '../../services/assetService';
 
-import { AssetAssignmentLog, AssetStatus } from '../../interfaces/state/assetState';
+import { AssetAssignmentLog, AssetPagination, AssetStatus } from '../../interfaces/state/assetState';
 import { RootState } from '../store';
 
 export const fetchAssets = createAsyncThunk(
   'assets/fetchAll',
-  async (_, { getState, rejectWithValue }) => {
+  async (params: FetchAssetsParams | undefined, { getState, rejectWithValue }) => {
     try {
       const token = (getState() as RootState).user.token ?? '';
-      return await assetService.listAssets(token);
+      return await assetService.listAssets(token, params);
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch assets');
     }
@@ -92,6 +92,7 @@ const assetSlice = createSlice({
   name: 'assets',
   initialState: {
     assets: [] as import('../../interfaces/state/assetState').Asset[],
+    pagination: null as AssetPagination | null,
     assignmentLogs: [] as AssetAssignmentLog[],
     isLoading: false,
     isCreating: false,
@@ -136,7 +137,8 @@ const assetSlice = createSlice({
     });
     builder.addCase(fetchAssets.fulfilled, (state, action) => {
       state.isLoading = false;
-      state.assets = action.payload;
+      state.assets = action.payload.assets;
+      state.pagination = action.payload.pagination;
     });
     builder.addCase(fetchAssets.rejected, (state, action) => {
       state.isLoading = false;

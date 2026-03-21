@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../state/store';
 import { fetchAssets, createAsset, clearCreateError, updateAsset, clearEditError, updateAssetStatus, clearUpdateError, fetchAssignmentLogs, assignAsset, recordAssetReturn, clearAssignError, clearReturnError, clearAssignmentLogs } from '../../state/assets/assetSlice';
 import AppLayout from '../../components/layout/AppLayout';
+import Pagination from '../../components/Pagination';
 import {
   Package, Plus, AlertCircle, Loader2, X, Hash,
   DollarSign, MapPin, FileText, CheckCircle, ChevronDown, AlertTriangle, Pencil,
@@ -979,11 +980,14 @@ const AssignAssetModal: React.FC<{
 
 const AssetsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { assets, isLoading, error } = useSelector((state: RootState) => state.assets);
+  const { assets, pagination, isLoading, error } = useSelector((state: RootState) => state.assets);
   const user = useSelector((state: RootState) => state.user.user);
 
   const canCreate = user?.role === 'manager' || user?.role === 'executive';
   const canChangeStatus = canCreate;
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Search & filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -1018,8 +1022,17 @@ const AssetsPage: React.FC = () => {
   const prevAssetCount = useRef(assets.length);
 
   useEffect(() => {
-    dispatch(fetchAssets());
-  }, [dispatch]);
+    dispatch(fetchAssets({
+      page: currentPage,
+      per_page: 25,
+      q: searchQuery || undefined,
+      category: filterCategory || undefined,
+      status: filterStatus || undefined,
+      location: filterLocation || undefined,
+      purchase_date_from: filterDateFrom || undefined,
+      purchase_date_to: filterDateTo || undefined,
+    }));
+  }, [currentPage, searchQuery, filterCategory, filterStatus, filterLocation, filterDateFrom, filterDateTo]);
 
   // Detect newly created asset to trigger toast
   useEffect(() => {
@@ -1087,23 +1100,15 @@ const AssetsPage: React.FC = () => {
     setTimeout(() => { setStatusModalOpen(false); setStatusModalAsset(null); }, 200);
   };
 
-  // Client-side filtered assets
-  const filteredAssets = assets.filter((a) => {
-    const q = searchQuery.toLowerCase();
-    if (q && !a.name.toLowerCase().includes(q) && !a.serial_number.toLowerCase().includes(q) && !(a.notes ?? '').toLowerCase().includes(q)) return false;
-    if (filterCategory && a.category !== filterCategory) return false;
-    if (filterStatus && a.status !== filterStatus) return false;
-    if (filterLocation && !(a.location ?? '').toLowerCase().includes(filterLocation.toLowerCase())) return false;
-    if (filterDateFrom && a.purchase_date < filterDateFrom) return false;
-    if (filterDateTo && a.purchase_date > filterDateTo) return false;
-    return true;
-  });
+  // Filtering is server-side; assets already contains the current page's results
+  const filteredAssets = assets;
 
   const hasActiveFilters = !!(searchQuery || filterCategory || filterStatus || filterLocation || filterDateFrom || filterDateTo);
 
   const clearFilters = () => {
     setSearchQuery(''); setFilterCategory(''); setFilterStatus('');
     setFilterLocation(''); setFilterDateFrom(''); setFilterDateTo('');
+    setCurrentPage(1);
   };
 
   const exportCSV = () => {
@@ -1199,7 +1204,7 @@ const AssetsPage: React.FC = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 placeholder="Search by name, serial no., or notes…"
                 className="w-full pl-9 pr-4 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all duration-150 placeholder:text-gray-400"
               />
@@ -1247,7 +1252,7 @@ const AssetsPage: React.FC = () => {
               <div className="relative">
                 <select
                   value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value as AssetCategory | '')}
+                  onChange={(e) => { setFilterCategory(e.target.value as AssetCategory | ''); setCurrentPage(1); }}
                   className="w-full pl-3 pr-7 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none transition-all duration-150"
                 >
                   <option value="">All categories</option>
@@ -1260,7 +1265,7 @@ const AssetsPage: React.FC = () => {
               <div className="relative">
                 <select
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as AssetStatus | '')}
+                  onChange={(e) => { setFilterStatus(e.target.value as AssetStatus | ''); setCurrentPage(1); }}
                   className="w-full pl-3 pr-7 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none transition-all duration-150"
                 >
                   <option value="">All statuses</option>
@@ -1273,7 +1278,7 @@ const AssetsPage: React.FC = () => {
               <input
                 type="text"
                 value={filterLocation}
-                onChange={(e) => setFilterLocation(e.target.value)}
+                onChange={(e) => { setFilterLocation(e.target.value); setCurrentPage(1); }}
                 placeholder="Location…"
                 className="pl-3 pr-4 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-150 placeholder:text-gray-400"
               />
@@ -1282,7 +1287,7 @@ const AssetsPage: React.FC = () => {
               <input
                 type="date"
                 value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
+                onChange={(e) => { setFilterDateFrom(e.target.value); setCurrentPage(1); }}
                 placeholder="Purchase from"
                 className="pl-3 pr-4 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-150"
               />
@@ -1291,7 +1296,7 @@ const AssetsPage: React.FC = () => {
               <input
                 type="date"
                 value={filterDateTo}
-                onChange={(e) => setFilterDateTo(e.target.value)}
+                onChange={(e) => { setFilterDateTo(e.target.value); setCurrentPage(1); }}
                 placeholder="Purchase to"
                 className="pl-3 pr-4 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-150"
               />
@@ -1353,6 +1358,17 @@ const AssetsPage: React.FC = () => {
             </table>
           )}
         </div>
+
+        {/* Pagination */}
+        {pagination && (
+          <Pagination
+            currentPage={pagination.current_page}
+            totalPages={pagination.total_pages}
+            onPageChange={(page) => setCurrentPage(page)}
+            totalCount={pagination.total_count}
+            perPage={pagination.per_page}
+          />
+        )}
 
       </div>
     </AppLayout>

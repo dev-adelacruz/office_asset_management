@@ -30,7 +30,10 @@ RSpec.describe 'Assets' do
         tags 'Assets'
         security [ bearerAuth: [] ]
 
-        response(200, 'returns all assets') do
+        parameter name: :page, in: :query, type: :integer, required: false
+        parameter name: :per_page, in: :query, type: :integer, required: false
+
+        response(200, 'returns all assets with pagination metadata') do
           before do
             create_list(:asset, 3)
             sign_in manager
@@ -40,6 +43,45 @@ RSpec.describe 'Assets' do
             expect(response).to have_http_status :ok
             expect(json_response[:status][:code]).to eq 200
             expect(json_response[:status][:data][:assets].length).to eq 3
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:current_page]).to eq 1
+            expect(pagination[:total_count]).to eq 3
+            expect(pagination[:per_page]).to eq 25
+            expect(pagination[:total_pages]).to eq 1
+          end
+        end
+
+        response(200, 'paginates results with per_page and page params') do
+          let(:page) { 2 }
+          let(:per_page) { 2 }
+
+          before do
+            create_list(:asset, 5)
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:assets].length).to eq 2
+            pagination = json_response[:status][:data][:pagination]
+            expect(pagination[:current_page]).to eq 2
+            expect(pagination[:total_count]).to eq 5
+            expect(pagination[:total_pages]).to eq 3
+            expect(pagination[:per_page]).to eq 2
+          end
+        end
+
+        response(200, 'returns empty page when page exceeds total') do
+          let(:page) { 99 }
+          let(:per_page) { 25 }
+
+          before do
+            create_list(:asset, 2)
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:assets]).to be_empty
+            expect(json_response[:status][:data][:pagination][:current_page]).to eq 99
           end
         end
 

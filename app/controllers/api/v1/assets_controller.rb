@@ -7,12 +7,28 @@ class Api::V1::AssetsController < Api::BaseController
   before_action :set_asset, only: [ :update ]
 
   def index
-    assets = filtered_assets.order(created_at: :desc)
+    per_page = params[:per_page].present? ? [ [ params[:per_page].to_i, 1 ].max, 100 ].min : 25
+    page     = params[:page].present? ? [ params[:page].to_i, 1 ].max : 1
+    offset   = (page - 1) * per_page
+
+    scope       = filtered_assets
+    total       = scope.count
+    assets      = scope.order(created_at: :desc).limit(per_page).offset(offset)
+    total_pages = (total.to_f / per_page).ceil
+
     render json: {
       status: {
         code: 200,
         message: "Assets retrieved successfully.",
-        data: { assets: AssetBlueprint.render_as_hash(assets) }
+        data: {
+          assets: AssetBlueprint.render_as_hash(assets),
+          pagination: {
+            current_page: page,
+            total_pages: total_pages,
+            total_count: total,
+            per_page: per_page
+          }
+        }
       }
     }, status: :ok
   end
