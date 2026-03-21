@@ -76,7 +76,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 shadow-lg shadow-blue-900/50">
             <Zap className="w-4 h-4 text-white" />
           </div>
-          <span className="text-lg font-bold tracking-tight">AppName</span>
+          <span className="text-lg font-bold tracking-tight">DeskDex</span>
         </div>
 
         {/* Nav */}
