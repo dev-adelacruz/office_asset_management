@@ -5,4 +5,5 @@ namespace :v1 do
   draw(:profiles)
   draw(:assets)
   draw(:licenses)
+  draw(:asset_requests)
 end
