@@ -10,4 +10,14 @@ class LicenseBlueprint < Blueprinter::Base
   field :status do |license|
     license.status
   end
+
+  field :seats_used do |license|
+    license.seats_used
+  end
+
+  field :seats_available do |license|
+    license.seats_available
+  end
+
+  association :license_seats, blueprint: LicenseSeatBlueprint
 end

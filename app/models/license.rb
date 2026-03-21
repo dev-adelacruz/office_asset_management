@@ -10,6 +10,17 @@ class License < ApplicationRecord
   validates :cost, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :expiry_date, presence: true
 
+  has_many :license_seats, dependent: :destroy
+  has_many :users, through: :license_seats
+
+  def seats_used
+    license_seats.count
+  end
+
+  def seats_available
+    total_seats - seats_used
+  end
+
   def status
     today = Date.today
     return "expired" if expiry_date < today

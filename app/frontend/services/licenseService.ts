@@ -1,4 +1,4 @@
-import { License } from '../interfaces/state/licenseState';
+import { License, LicenseSeat } from '../interfaces/state/licenseState';
 
 export interface CreateLicenseParams {
   software_name: string;
@@ -65,6 +65,43 @@ class LicenseService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `Failed to update license (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.license;
+  }
+
+  async assignSeat(licenseId: number, userEmail: string, token: string): Promise<{ seat: LicenseSeat; license: License }> {
+    const response = await fetch(`${this.baseURL}/licenses/${licenseId}/seats`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ user_email: userEmail }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to assign seat (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data;
+  }
+
+  async releaseSeat(licenseId: number, seatId: number, token: string): Promise<License> {
+    const response = await fetch(`${this.baseURL}/licenses/${licenseId}/seats/${seatId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to release seat (${response.status})`);
     }
 
     const data = await response.json();
