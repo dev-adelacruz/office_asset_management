@@ -5,6 +5,9 @@ FactoryBot.define do
     email { Faker::Internet.email }
     password { SecureRandom.hex }
     role { :employee }
+    name { Faker::Name.name }
+    phone_number { Faker::PhoneNumber.phone_number }
+    office_location { Faker::Address.city }
 
     trait :executive do
       role { :executive }
