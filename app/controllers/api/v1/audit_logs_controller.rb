@@ -4,7 +4,11 @@ class Api::V1::AuditLogsController < Api::BaseController
   before_action :require_executive!
 
   def index
-    logs = AuditLog
+    per_page = params[:per_page].present? ? [ [ params[:per_page].to_i, 1 ].max, 100 ].min : 25
+    page     = params[:page].present? ? [ params[:page].to_i, 1 ].max : 1
+    offset   = (page - 1) * per_page
+
+    scope = AuditLog
       .includes(:actor)
       .by_actor(params[:actor_id])
       .by_action(params[:action_type])
@@ -12,13 +16,24 @@ class Api::V1::AuditLogsController < Api::BaseController
       .from_date(params[:from_date])
       .to_date(params[:to_date])
       .recent
-      .limit(200)
+
+    total       = scope.count
+    logs        = scope.limit(per_page).offset(offset)
+    total_pages = (total.to_f / per_page).ceil
 
     render json: {
       status: {
         code: 200,
         message: "Audit logs retrieved successfully.",
-        data: { audit_logs: AuditLogBlueprint.render_as_hash(logs) }
+        data: {
+          audit_logs: AuditLogBlueprint.render_as_hash(logs),
+          pagination: {
+            current_page: page,
+            total_pages: total_pages,
+            total_count: total,
+            per_page: per_page
+          }
+        }
       }
     }, status: :ok
   end

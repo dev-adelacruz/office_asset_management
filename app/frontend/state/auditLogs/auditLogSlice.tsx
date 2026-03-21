@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { auditLogService, AuditLogFilters } from '../../services/auditLogService';
-import { AuditLog } from '../../interfaces/state/auditLogState';
+import { AuditLog, AuditLogPagination } from '../../interfaces/state/auditLogState';
 import { RootState } from '../store';
 
 export const fetchAuditLogs = createAsyncThunk(
@@ -19,6 +19,7 @@ const auditLogSlice = createSlice({
   name: 'auditLogs',
   initialState: {
     audit_logs: [] as AuditLog[],
+    pagination: null as AuditLogPagination | null,
     isLoading: false,
     error: null as string | null,
   },
@@ -30,7 +31,8 @@ const auditLogSlice = createSlice({
     });
     builder.addCase(fetchAuditLogs.fulfilled, (state, action) => {
       state.isLoading = false;
-      state.audit_logs = action.payload;
+      state.audit_logs = action.payload.audit_logs;
+      state.pagination = action.payload.pagination;
     });
     builder.addCase(fetchAuditLogs.rejected, (state, action) => {
       state.isLoading = false;

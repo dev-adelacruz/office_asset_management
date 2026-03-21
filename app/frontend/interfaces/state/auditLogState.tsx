@@ -16,8 +16,16 @@ export interface AuditLog {
   created_at: string;
 }
 
+export interface AuditLogPagination {
+  current_page: number;
+  total_pages: number;
+  total_count: number;
+  per_page: number;
+}
+
 export interface AuditLogState {
   audit_logs: AuditLog[];
+  pagination: AuditLogPagination | null;
   isLoading: boolean;
   error: string | null;
 }
