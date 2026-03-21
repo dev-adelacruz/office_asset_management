@@ -3,13 +3,15 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchAssetRequests,
   createAssetRequest,
+  updateAssetRequest,
   clearCreateError,
+  clearUpdateError,
 } from '../../state/assetRequests/assetRequestSlice';
 import { RootState } from '../../state/store';
 import { AssetRequest, AssetRequestStatus, AssetRequestUrgency } from '../../interfaces/state/assetRequestState';
 import { CreateAssetRequestParams } from '../../services/assetRequestService';
 import AppLayout from '../../components/layout/AppLayout';
-import { Plus, ClipboardList, X, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Plus, ClipboardList, X, AlertTriangle, CheckCircle, Clock, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -35,6 +37,93 @@ const URGENCY_STYLES: Record<AssetRequestUrgency, string> = {
   low: 'bg-gray-50 text-gray-600 ring-1 ring-gray-200',
   medium: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
   high: 'bg-red-50 text-red-700 ring-1 ring-red-200',
+};
+
+// ─── RejectModal ──────────────────────────────────────────────────────────────
+
+interface RejectModalProps {
+  request: AssetRequest;
+  onClose: () => void;
+}
+
+const RejectModal: React.FC<RejectModalProps> = ({ request, onClose }) => {
+  const dispatch = useDispatch();
+  const { isUpdating, updateError } = useSelector((s: RootState) => s.assetRequests);
+  const [visible, setVisible] = useState(false);
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 200);
+    dispatch(clearUpdateError());
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = await (dispatch as any)(
+      updateAssetRequest({ requestId: request.id, params: { status: 'rejected', notes } })
+    );
+    if (!result.error) handleClose();
+  };
+
+  return (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
+      <div className={`relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transition-all duration-200 ${visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Reject Request</h2>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700">
+            <p className="font-medium truncate">{request.user.name ?? request.user.email}</p>
+            <p className="text-gray-500 text-xs mt-0.5 truncate">{request.justification}</p>
+          </div>
+
+          {updateError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-50 border border-red-200">
+              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700">{updateError}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Reason for Rejection <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Explain why the request is being rejected..."
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 resize-none"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={handleClose} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdating || !notes.trim()}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {isUpdating ? 'Rejecting…' : 'Reject Request'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 // ─── SubmitRequestModal ───────────────────────────────────────────────────────
@@ -78,10 +167,8 @@ const SubmitRequestModal: React.FC<SubmitRequestModalProps> = ({ onClose }) => {
     if (!result.error) handleClose();
   };
 
-  const field = (
-    key: keyof typeof form,
-    value: string
-  ) => setForm((prev) => ({ ...prev, [key]: value }));
+  const field = (key: keyof typeof form, value: string) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}>
@@ -185,9 +272,10 @@ const SubmitRequestModal: React.FC<SubmitRequestModalProps> = ({ onClose }) => {
 
 const RequestsPage: React.FC = () => {
   const dispatch = useDispatch();
-  const { requests, isLoading, error } = useSelector((s: RootState) => s.assetRequests);
+  const { requests, isLoading, isUpdating, error } = useSelector((s: RootState) => s.assetRequests);
   const user = useSelector((s: RootState) => s.user.user);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<AssetRequest | null>(null);
 
   const isManager = user?.role === 'manager' || user?.role === 'executive';
 
@@ -195,16 +283,18 @@ const RequestsPage: React.FC = () => {
     (dispatch as any)(fetchAssetRequests());
   }, [dispatch]);
 
+  const handleApprove = async (req: AssetRequest) => {
+    await (dispatch as any)(updateAssetRequest({ requestId: req.id, params: { status: 'approved' } }));
+  };
+
   return (
     <AppLayout title="Asset Requests">
       <div className="space-y-6">
         {/* Header row */}
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">
-              {isManager ? 'All submitted asset requests' : 'Your submitted asset requests'}
-            </p>
-          </div>
+          <p className="text-sm text-gray-500">
+            {isManager ? 'All submitted asset requests — sorted by urgency' : 'Your submitted asset requests'}
+          </p>
           <button
             onClick={() => setShowSubmitModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm transition-colors"
@@ -243,6 +333,7 @@ const RequestsPage: React.FC = () => {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Date</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Submitted</th>
+                  {isManager && <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -263,6 +354,9 @@ const RequestsPage: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5 max-w-xs">
                       <p className="text-gray-700 truncate">{req.justification}</p>
+                      {req.notes && req.status !== 'pending' && (
+                        <p className="text-xs text-gray-400 truncate mt-0.5">Note: {req.notes}</p>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium capitalize ${URGENCY_STYLES[req.urgency]}`}>
@@ -283,6 +377,32 @@ const RequestsPage: React.FC = () => {
                     <td className="px-5 py-3.5 text-gray-400 text-xs whitespace-nowrap">
                       {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
+                    {isManager && (
+                      <td className="px-5 py-3.5">
+                        {req.status === 'pending' ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleApprove(req)}
+                              disabled={isUpdating}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+                            >
+                              <ThumbsUp className="w-3 h-3" />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => setRejectTarget(req)}
+                              disabled={isUpdating}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                            >
+                              <ThumbsDown className="w-3 h-3" />
+                              Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -292,6 +412,7 @@ const RequestsPage: React.FC = () => {
       </div>
 
       {showSubmitModal && <SubmitRequestModal onClose={() => setShowSubmitModal(false)} />}
+      {rejectTarget && <RejectModal request={rejectTarget} onClose={() => setRejectTarget(null)} />}
     </AppLayout>
   );
 };

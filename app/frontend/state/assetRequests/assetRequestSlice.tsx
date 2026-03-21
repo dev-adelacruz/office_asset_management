@@ -15,6 +15,21 @@ export const fetchAssetRequests = createAsyncThunk(
   }
 );
 
+export const updateAssetRequest = createAsyncThunk(
+  'assetRequests/update',
+  async (
+    { requestId, params }: { requestId: number; params: { status: string; notes?: string } },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const token = (getState() as RootState).user.token ?? '';
+      return await assetRequestService.updateAssetRequest(requestId, params, token);
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to update asset request');
+    }
+  }
+);
+
 export const createAssetRequest = createAsyncThunk(
   'assetRequests/create',
   async (params: CreateAssetRequestParams, { getState, rejectWithValue }) => {
@@ -33,12 +48,17 @@ const assetRequestSlice = createSlice({
     requests: [] as AssetRequest[],
     isLoading: false,
     isCreating: false,
+    isUpdating: false,
     error: null as string | null,
     createError: null as string | null,
+    updateError: null as string | null,
   },
   reducers: {
     clearCreateError: (state) => {
       state.createError = null;
+    },
+    clearUpdateError: (state) => {
+      state.updateError = null;
     },
   },
   extraReducers: (builder) => {
@@ -67,8 +87,22 @@ const assetRequestSlice = createSlice({
       state.isCreating = false;
       state.createError = action.payload as string;
     });
+
+    builder.addCase(updateAssetRequest.pending, (state) => {
+      state.isUpdating = true;
+      state.updateError = null;
+    });
+    builder.addCase(updateAssetRequest.fulfilled, (state, action) => {
+      state.isUpdating = false;
+      const idx = state.requests.findIndex((r) => r.id === action.payload.id);
+      if (idx !== -1) state.requests[idx] = action.payload;
+    });
+    builder.addCase(updateAssetRequest.rejected, (state, action) => {
+      state.isUpdating = false;
+      state.updateError = action.payload as string;
+    });
   },
 });
 
-export const { clearCreateError } = assetRequestSlice.actions;
+export const { clearCreateError, clearUpdateError } = assetRequestSlice.actions;
 export default assetRequestSlice.reducer;
