@@ -5,7 +5,7 @@ import { logoutUser } from '../../state/user/userSlice';
 import { fetchNotifications, markNotificationRead } from '../../state/notifications/notificationSlice';
 import { RootState } from '../../state/store';
 import {
-  LayoutDashboard, User, Settings, LogOut, Bell,
+  LayoutDashboard, User, LogOut, Bell,
   ChevronDown, Zap, Package, ShieldCheck, ClipboardList,
   AlertTriangle, X, ScrollText,
 } from 'lucide-react';
@@ -22,7 +22,6 @@ const navItems = [
   { label: 'Requests', icon: ClipboardList, path: '/requests', roles: null },
   { label: 'Audit Log', icon: ScrollText, path: '/audit-logs', roles: ['executive'] },
   { label: 'Profile', icon: User, path: '/profile', roles: null },
-  { label: 'Settings', icon: Settings, path: '/settings', roles: null },
 ];
 
 const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
@@ -205,10 +204,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ title, children }) => {
                     >
                       <User className="w-4 h-4 text-gray-400 shrink-0" />
                       Profile
-                    </button>
-                    <button className="flex items-center w-full gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
-                      <Settings className="w-4 h-4 text-gray-400 shrink-0" />
-                      Settings
                     </button>
                   </div>
 
