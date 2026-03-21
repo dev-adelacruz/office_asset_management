@@ -1,0 +1,7 @@
+{
+  "repo": "dev-adelacruz/office_asset_management",
+  "baseBranch": "main",
+  "teamReviewer": "dev-adelacruz",
+  "milestoneName": "Untracked",
+  "defaultLabels": ["ai-contribution-level:3"]
+}

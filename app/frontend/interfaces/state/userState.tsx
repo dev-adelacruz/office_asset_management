@@ -4,6 +4,7 @@ interface UserState {
   user: {
     id: number | null;
     email: string | null;
+    role: string | null;
   } | null;
   isLoading: boolean;
   error: string | null;

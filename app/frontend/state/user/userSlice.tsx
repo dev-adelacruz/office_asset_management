@@ -41,11 +41,10 @@ export const checkAuthStatus = createAsyncThunk(
       const token = await tokenStorage.getToken();
       
       if (token) {
-        const isValid = await authService.validateToken(token);
-        
-        if (isValid) {
-          // For now, return only the token; user data can be fetched separately if needed
-          return { token, user: null };
+        const { valid, user } = await authService.validateToken(token);
+
+        if (valid) {
+          return { token, user: user ?? null };
         }
       }
       return null;
