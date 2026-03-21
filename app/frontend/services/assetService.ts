@@ -1,4 +1,4 @@
-import { Asset, AssetCategory, AssetCondition } from '../interfaces/state/assetState';
+import { Asset, AssetCategory, AssetCondition, AssetStatus } from '../interfaces/state/assetState';
 
 export interface CreateAssetParams {
   name: string;
@@ -48,6 +48,44 @@ class AssetService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `Failed to create asset (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.asset;
+  }
+
+  async updateAsset(assetId: number, params: Partial<CreateAssetParams>, token: string): Promise<Asset> {
+    const response = await fetch(`${this.baseURL}/assets/${assetId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ asset: params }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to update asset (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.status?.data?.asset;
+  }
+
+  async updateAssetStatus(assetId: number, status: AssetStatus, token: string): Promise<Asset> {
+    const response = await fetch(`${this.baseURL}/assets/${assetId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to update asset status (${response.status})`);
     }
 
     const data = await response.json();

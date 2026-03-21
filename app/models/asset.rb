@@ -20,8 +20,11 @@ class Asset < ApplicationRecord
     available: "available",
     assigned: "assigned",
     under_maintenance: "under_maintenance",
-    retired: "retired"
+    retired: "retired",
+    lost: "lost"
   }
+
+  has_many :asset_status_logs, dependent: :destroy
 
   validates :name, presence: true
   validates :category, presence: true

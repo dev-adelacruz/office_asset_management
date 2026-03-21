@@ -1,6 +1,6 @@
 export type AssetCategory = 'laptop' | 'monitor' | 'peripheral' | 'furniture' | 'other';
 export type AssetCondition = 'brand_new' | 'good' | 'fair' | 'poor';
-export type AssetStatus = 'available' | 'assigned' | 'under_maintenance' | 'retired';
+export type AssetStatus = 'available' | 'assigned' | 'under_maintenance' | 'retired' | 'lost';
 
 export interface Asset {
   id: number;
@@ -25,6 +25,10 @@ interface AssetState {
   assets: Asset[];
   isLoading: boolean;
   isCreating: boolean;
+  isEditing: boolean;
+  isUpdating: boolean;
   error: string | null;
   createError: string | null;
+  editError: string | null;
+  updateError: string | null;
 }

@@ -35,5 +35,9 @@ FactoryBot.define do
     trait :retired do
       status { :retired }
     end
+
+    trait :lost do
+      status { :lost }
+    end
   end
 end
