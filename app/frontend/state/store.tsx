@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import userReducer from './user/userSlice';
+import assetReducer from './assets/assetSlice';
 
 export const store = configureStore({
   reducer: {
     user: userReducer,
+    assets: assetReducer,
   }
 })
 

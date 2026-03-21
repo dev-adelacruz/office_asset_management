@@ -3,4 +3,5 @@
 namespace :v1 do
   draw(:devise)
   draw(:profiles)
+  draw(:assets)
 end
