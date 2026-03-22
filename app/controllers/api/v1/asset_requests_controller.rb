@@ -42,27 +42,21 @@ class Api::V1::AssetRequestsController < Api::BaseController
   end
 
   def create
-    request = current_user.asset_requests.new(asset_request_params)
+    result = AssetRequests::CreateAssetRequestUsecase.call(
+      asset_request_params: asset_request_params,
+      current_user: current_user
+    )
 
-    if request.save
-      request.asset_request_status_logs.create!(
-        changed_by: current_user,
-        from_status: nil,
-        to_status: request.status
-      )
-
+    if result.success?
       render json: {
         status: {
           code: 201,
           message: "Asset request submitted successfully.",
-          data: { asset_request: AssetRequestBlueprint.render_as_hash(request) }
+          data: { asset_request: AssetRequestBlueprint.render_as_hash(result.asset_request) }
         }
       }, status: :created
     else
-      render json: {
-        status: 422,
-        message: request.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
