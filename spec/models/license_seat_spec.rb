@@ -14,26 +14,5 @@ RSpec.describe LicenseSeat do
     it { is_expected.to belong_to(:user) }
   end
 
-  describe "seat availability" do
-    it "is valid when seats are available" do
-      license = create(:license, total_seats: 2)
-      create(:license_seat, license: license)
-      seat = build(:license_seat, license: license)
-      expect(seat).to be_valid
-    end
-
-    it "is invalid when all seats are taken" do
-      license = create(:license, total_seats: 1)
-      create(:license_seat, license: license)
-      seat = build(:license_seat, license: license)
-      expect(seat).not_to be_valid
-      expect(seat.errors[:base]).to include(/No seats available/)
-    end
-
-    it "does not enforce seat availability on update" do
-      license = create(:license, total_seats: 1)
-      seat = create(:license_seat, license: license)
-      expect { seat.save! }.not_to raise_error
-    end
-  end
+  # Seat availability enforcement moved to Licenses::ValidateSeatAvailabilityInteractor (OAM2-60)
 end
