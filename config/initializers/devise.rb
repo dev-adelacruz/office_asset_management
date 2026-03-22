@@ -317,7 +317,7 @@ end
 
 Devise.setup do |config|
   config.jwt do |jwt|
-    jwt.secret = Rails.application.credentials.devise_jwt_secret_key!
+    jwt.secret = ENV["SECRET_KEY_BASE_DUMMY"] ? "dummy" : Rails.application.credentials.devise_jwt_secret_key!
     jwt.expiration_time = 5.minutes.to_i
     # dispatch_requests and revocation_requests are intentionally omitted here.
     # devise_for auto-registers the correct entries when routes are loaded:
