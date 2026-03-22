@@ -25,7 +25,7 @@ class Api::V1::Users::SessionsController < Devise::SessionsController
       render json: {
         status: 422,
         message: "There was a problem logging out."
-      }, status: :unproccessable_entity
+      }, status: :unprocessable_entity
     end
   end
 
