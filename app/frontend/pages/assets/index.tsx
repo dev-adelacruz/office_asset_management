@@ -35,11 +35,19 @@ const CONDITION_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  available:         'bg-emerald-50 text-emerald-700 border-emerald-200',
-  assigned:          'bg-blue-50 text-blue-700 border-blue-200',
-  under_maintenance: 'bg-amber-50 text-amber-700 border-amber-200',
-  retired:           'bg-gray-100 text-gray-500 border-gray-200',
-  lost:              'bg-red-50 text-red-600 border-red-200',
+  available:         'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  assigned:          'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  under_maintenance: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  retired:           'bg-gray-100 text-gray-500 ring-1 ring-gray-200',
+  lost:              'bg-red-50 text-red-600 ring-1 ring-red-200',
+};
+
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  available:         <CheckCircle className="w-3 h-3" />,
+  assigned:          <User className="w-3 h-3" />,
+  under_maintenance: <AlertTriangle className="w-3 h-3" />,
+  retired:           <Package className="w-3 h-3" />,
+  lost:              <AlertCircle className="w-3 h-3" />,
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -125,14 +133,16 @@ const AssetRow: React.FC<{
       {canChangeStatus ? (
         <button
           onClick={() => onStatusClick(asset)}
-          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-all duration-150 hover:brightness-95 hover:shadow-sm cursor-pointer ${STATUS_STYLES[asset.status] ?? ''}`}
+          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all duration-150 hover:brightness-95 hover:shadow-sm cursor-pointer ${STATUS_STYLES[asset.status] ?? ''}`}
           title="Click to change status"
         >
+          {STATUS_ICONS[asset.status]}
           {STATUS_LABELS[asset.status] ?? asset.status}
           <ChevronDown className="w-3 h-3 opacity-60" />
         </button>
       ) : (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[asset.status] ?? ''}`}>
+        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[asset.status] ?? ''}`}>
+          {STATUS_ICONS[asset.status]}
           {STATUS_LABELS[asset.status] ?? asset.status}
         </span>
       )}
@@ -687,7 +697,7 @@ const StatusChangeModal: React.FC<{
                         disabled={isUpdating}
                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150 disabled:opacity-50 ${
                           selected === status
-                            ? `${STATUS_STYLES[status]} border-current`
+                            ? `${STATUS_STYLES[status]} border-transparent`
                             : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-gray-200 hover:bg-gray-100'
                         }`}
                       >
