@@ -30,6 +30,7 @@ import {
   UserMinus,
   UserPlus,
   ClipboardList,
+  Search,
 } from 'lucide-react';
 import ItemRequestModal, { ItemContext } from '../../components/ItemRequestModal';
 
@@ -821,32 +822,37 @@ const LicensesPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            placeholder="Search software, vendor, PO..."
-            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-colors"
-          />
-          <select
-            value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white transition-colors"
-          >
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="expiring_soon">Expiring Soon</option>
-            <option value="expired">Expired</option>
-          </select>
-          {(searchQuery || filterStatus) && (
-            <button
-              onClick={() => { setSearchQuery(''); setFilterStatus(''); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors"
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="Search software, vendor, PO…"
+                className="w-full pl-9 pr-4 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all duration-150 placeholder:text-gray-400"
+              />
+            </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+              className="pl-3 pr-8 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none transition-all duration-150 cursor-pointer"
             >
-              Clear
-            </button>
-          )}
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="expiring_soon">Expiring Soon</option>
+              <option value="expired">Expired</option>
+            </select>
+            {(searchQuery || filterStatus) && (
+              <button
+                onClick={() => { setSearchQuery(''); setFilterStatus(''); setCurrentPage(1); }}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors duration-150 whitespace-nowrap"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -882,7 +888,7 @@ const LicensesPage: React.FC = () => {
                 {licenses.map((license) => {
                   const days = daysUntilExpiry(license.expiry_date);
                   return (
-                    <tr key={license.id} className="hover:bg-gray-50/60 transition-colors">
+                    <tr key={license.id} className="hover:bg-blue-50/40 transition-colors duration-100">
                       <td
                         className="px-5 py-3.5 cursor-pointer"
                         onClick={() => setDrawerLicense(license)}
