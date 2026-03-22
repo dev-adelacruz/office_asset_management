@@ -31,6 +31,7 @@ class AuthService {
       const response = await fetch(`${this.baseURL}/users/sign_in`, {
         method: 'POST',
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ user: credentials }),
@@ -59,6 +60,7 @@ class AuthService {
       const response = await fetch(`${this.baseURL}/users/sign_out`, {
         method: 'DELETE',
         headers: {
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
@@ -79,6 +81,7 @@ class AuthService {
       const response = await fetch(`${this.baseURL}/users/validate_token`, {
         method: 'GET',
         headers: {
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
