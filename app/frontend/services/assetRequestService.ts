@@ -3,6 +3,9 @@ import { AssetRequest, AssetRequestPagination, AssetRequestWithTimeline } from '
 export interface FetchAssetRequestsParams {
   page?: number;
   per_page?: number;
+  q?: string;
+  status?: string;
+  asset_type?: string;
 }
 
 export interface ListAssetRequestsResult {

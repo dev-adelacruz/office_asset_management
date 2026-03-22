@@ -97,11 +97,16 @@ class Api::V1::AssetRequestsController < Api::BaseController
   private
 
   def scoped_requests
-    if current_user.role.in?(%w[manager executive])
+    scope = if current_user.role.in?(%w[manager executive])
       AssetRequest.includes(:user, :asset, :license).order(urgency_order_sql, created_at: :desc)
     else
       current_user.asset_requests.includes(:asset, :license).order(created_at: :desc)
     end
+
+    scope = scope.where("justification ILIKE ?", "%#{params[:q]}%") if params[:q].present?
+    scope = scope.where(status: params[:status]) if params[:status].present?
+    scope = scope.where(asset_type: params[:asset_type]) if params[:asset_type].present?
+    scope
   end
 
   def urgency_order_sql
