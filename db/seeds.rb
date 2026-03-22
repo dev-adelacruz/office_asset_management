@@ -104,11 +104,8 @@ ActiveRecord::Base.transaction do
   # ===========================================================================
   puts "\n[2/4] Creating assets..."
 
-  # Status distribution: available ~30%, assigned ~55%, under_maintenance ~8%, retired ~5%, lost ~2%
-  statuses   = ([ "available" ] * 90) + ([ "assigned" ] * 165) + ([ "under_maintenance" ] * 24) + ([ "retired" ] * 15) + ([ "lost" ] * 6)
   conditions = ([ "new" ] * 40) + ([ "good" ] * 160) + ([ "fair" ] * 80) + ([ "poor" ] * 20)
   locations  = [ "HQ - Floor 3", "HQ - Floor 4", "HQ - Floor 5", "HQ - Floor 6", "Branch - East", "Branch - West" ]
-  statuses.shuffle!
   conditions.shuffle!
 
   asset_specs = []
@@ -192,7 +189,7 @@ ActiveRecord::Base.transaction do
         purchase_cost: cost,
         purchase_date: rand(4.years.ago..1.year.ago).to_date,
         condition: conditions[i % conditions.length],
-        status: statuses[i % statuses.length],
+        status: "available",
         location: locations[i % locations.length],
         warranty_expiry: rand(1.year.from_now..3.years.from_now).to_date
       )
@@ -203,25 +200,7 @@ ActiveRecord::Base.transaction do
 
   puts "  ✓ #{Asset.count} assets created"
 
-  # ===========================================================================
-  # ASSET ASSIGNMENT LOGS (for all 'assigned' assets)
-  # ===========================================================================
-  puts "\n[3/4] Creating assignment logs..."
-
-  assigned_assets = created_assets.select(&:assigned?)
-  assigned_assets.each do |asset|
-    next if AssetAssignmentLog.exists?(asset: asset, returned_at: nil)
-
-    AssetAssignmentLog.create!(
-      asset: asset,
-      assigned_to: employees.sample,
-      assigned_by: manager,
-      assigned_at: rand(3.years.ago..6.months.ago),
-      returned_at: nil
-    )
-  end
-
-  puts "  ✓ #{AssetAssignmentLog.count} assignment logs"
+  puts "\n[3/4] Skipping assignment logs (all assets start as available)"
 
   # ===========================================================================
   # LICENSES (50 total)
@@ -299,27 +278,14 @@ ActiveRecord::Base.transaction do
 
   puts "  ✓ #{License.count} licenses created"
 
-  # Assign seats (up to 80% fill, idempotent)
-  all_users = [ executive, manager ] + employees
-  created_licenses.each do |license|
-    next if license.license_seats.any?
-
-    seats_to_fill = [ (license.total_seats * 0.8).floor, all_users.length ].min
-    all_users.sample(seats_to_fill).each do |user|
-      LicenseSeat.find_or_create_by!(license: license, user: user)
-    end
-  end
-
-  puts "  ✓ #{LicenseSeat.count} license seat assignments"
+  puts "  ✓ License seats start at 0 (assign via the app)"
 end
 
 puts "\n" + "=" * 60
 puts "Seeding complete!"
 puts "  Users:            #{User.count}"
-puts "  Assets:           #{Asset.count}"
-puts "  Assignment logs:  #{AssetAssignmentLog.count}"
-puts "  Licenses:         #{License.count}"
-puts "  License seats:    #{LicenseSeat.count}"
+puts "  Assets:           #{Asset.count} (all available)"
+puts "  Licenses:         #{License.count} (0 seats assigned)"
 puts ""
 puts "  Login as executive: sarah.chen@deskdex.com / password123"
 puts "  Login as manager:   james.wu@deskdex.com   / password123"
