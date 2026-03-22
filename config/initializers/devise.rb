@@ -318,12 +318,13 @@ end
 Devise.setup do |config|
   config.jwt do |jwt|
     jwt.secret = Rails.application.credentials.devise_jwt_secret_key!
-    jwt.dispatch_requests = [
-      [ "POST", %r{^/api/v1/users/sign_in$} ]
-    ]
-    jwt.revocation_requests = [
-      [ "DELETE", %r{^/api/v1/users/sign_out$} ]
-    ]
     jwt.expiration_time = 5.minutes.to_i
+    # dispatch_requests and revocation_requests are intentionally omitted here.
+    # devise_for auto-registers the correct entries when routes are loaded:
+    #   dispatch:  POST /api/v1/users/sign_in, POST /api/v1/users (registration)
+    #   revocation: DELETE /api/v1/users/sign_out
+    # Manually setting them here caused duplicates (initializer runs before
+    # routes), which triggered after_set_user twice per login and produced
+    # a malformed JWT that crashed RevocationManager on logout.
   end
 end
