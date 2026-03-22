@@ -98,9 +98,9 @@ class Api::V1::AssetRequestsController < Api::BaseController
 
   def scoped_requests
     if current_user.role.in?(%w[manager executive])
-      AssetRequest.includes(:user).order(urgency_order_sql, created_at: :desc)
+      AssetRequest.includes(:user, :asset, :license).order(urgency_order_sql, created_at: :desc)
     else
-      current_user.asset_requests.order(created_at: :desc)
+      current_user.asset_requests.includes(:asset, :license).order(created_at: :desc)
     end
   end
 
@@ -113,14 +113,15 @@ class Api::V1::AssetRequestsController < Api::BaseController
   end
 
   def set_asset_request
-    @asset_request = AssetRequest.find(params[:id])
+    @asset_request = AssetRequest.includes(:asset, :license, :user).find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render json: { status: 404, message: "Asset request not found." }, status: :not_found
   end
 
   def asset_request_params
     params.require(:asset_request).permit(
-      :asset_type, :justification, :urgency, :preferred_fulfillment_date, :notes
+      :asset_type, :justification, :urgency, :preferred_fulfillment_date, :notes,
+      :asset_id, :license_id
     )
   end
 

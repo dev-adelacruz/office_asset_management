@@ -191,6 +191,75 @@ RSpec.describe 'Asset Requests' do
           end
         end
 
+        response(201, 'employee submits a request linked to a specific asset') do
+          let(:asset) { create(:asset, :laptop) }
+          let(:body) do
+            {
+              asset_request: {
+                asset_type: 'physical',
+                justification: 'Need this specific laptop for remote work.',
+                urgency: 'high',
+                asset_id: asset.id
+              }
+            }
+          end
+          before { sign_in employee }
+
+          run_test! do |response|
+            expect(response).to have_http_status :created
+            data = json_response[:status][:data][:asset_request]
+            expect(data[:asset_id]).to eq asset.id
+            expect(data[:asset][:id]).to eq asset.id
+            expect(data[:asset][:name]).to eq asset.name
+            expect(data[:license_id]).to be_nil
+          end
+        end
+
+        response(201, 'employee submits a request linked to a specific license') do
+          let(:license) { create(:license) }
+          let(:body) do
+            {
+              asset_request: {
+                asset_type: 'software',
+                justification: 'Need access for design projects.',
+                urgency: 'medium',
+                license_id: license.id
+              }
+            }
+          end
+          before { sign_in employee }
+
+          run_test! do |response|
+            expect(response).to have_http_status :created
+            data = json_response[:status][:data][:asset_request]
+            expect(data[:license_id]).to eq license.id
+            expect(data[:license][:id]).to eq license.id
+            expect(data[:license][:software_name]).to eq license.software_name
+            expect(data[:asset_id]).to be_nil
+          end
+        end
+
+        response(422, 'cannot reference both asset and license') do
+          let(:asset) { create(:asset) }
+          let(:license) { create(:license) }
+          let(:body) do
+            {
+              asset_request: {
+                asset_type: 'physical',
+                justification: 'Dual reference test.',
+                urgency: 'low',
+                asset_id: asset.id,
+                license_id: license.id
+              }
+            }
+          end
+          before { sign_in employee }
+
+          run_test! do |response|
+            expect(response).to have_http_status :unprocessable_entity
+          end
+        end
+
         response(401, 'unauthenticated') do
           let(:body) { valid_params }
 

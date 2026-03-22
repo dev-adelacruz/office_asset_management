@@ -8,9 +8,10 @@ import Pagination from '../../components/Pagination';
 import {
   Package, Plus, AlertCircle, Loader2, X, Hash,
   DollarSign, MapPin, FileText, CheckCircle, ChevronDown, AlertTriangle, Pencil,
-  Search, Download, History, User, RotateCcw,
+  Search, Download, History, User, RotateCcw, ClipboardList,
 } from 'lucide-react';
 import { Asset, AssetAssignmentLog, AssetCategory, AssetCondition, AssetStatus } from '../../interfaces/state/assetState';
+import ItemRequestModal, { ItemContext } from '../../components/ItemRequestModal';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -90,21 +91,29 @@ const Field: React.FC<{
 
 // ─── Asset table row ──────────────────────────────────────────────────────────
 
+const REQUESTABLE_STATUS: AssetStatus[] = ['available'];
+
 const AssetRow: React.FC<{
   asset: Asset;
   canChangeStatus: boolean;
   onStatusClick: (asset: Asset) => void;
   onEditClick: (asset: Asset) => void;
   onHistoryClick: (asset: Asset) => void;
-}> = ({ asset, canChangeStatus, onStatusClick, onEditClick, onHistoryClick }) => (
+  onRowClick: (asset: Asset) => void;
+  onRequestClick: (asset: Asset) => void;
+}> = ({ asset, canChangeStatus, onStatusClick, onEditClick, onHistoryClick, onRowClick, onRequestClick }) => (
   <tr className="group hover:bg-blue-50/40 transition-colors duration-100">
-    <td className="px-5 py-3.5">
+    <td
+      className="px-5 py-3.5 cursor-pointer"
+      onClick={() => onRowClick(asset)}
+      title="View asset details"
+    >
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
           <Package className="w-4 h-4 text-blue-500" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-gray-800">{asset.name}</p>
+          <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">{asset.name}</p>
           <p className="text-xs text-gray-400 font-mono">{asset.asset_code}</p>
         </div>
       </div>
@@ -147,6 +156,14 @@ const AssetRow: React.FC<{
             <Pencil className="w-3.5 h-3.5" />
           </button>
         )}
+        <button
+          onClick={() => REQUESTABLE_STATUS.includes(asset.status) && onRequestClick(asset)}
+          disabled={!REQUESTABLE_STATUS.includes(asset.status)}
+          className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+          title={REQUESTABLE_STATUS.includes(asset.status) ? 'Request this asset' : `Cannot request — asset is ${asset.status.replace('_', ' ')}`}
+        >
+          <ClipboardList className="w-3.5 h-3.5" />
+        </button>
       </div>
     </td>
   </tr>
@@ -977,6 +994,139 @@ const AssignAssetModal: React.FC<{
   );
 };
 
+// ─── Asset Detail Drawer ──────────────────────────────────────────────────────
+
+const CONDITION_LABELS_FULL: Record<string, string> = {
+  brand_new: 'Brand New', good: 'Good', fair: 'Fair', poor: 'Poor',
+};
+
+const AssetDetailDrawer: React.FC<{
+  asset: Asset;
+  onClose: () => void;
+  onRequestClick: (asset: Asset) => void;
+}> = ({ asset, onClose, onRequestClick }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 250);
+  };
+
+  const canRequest = asset.status === 'available';
+
+  const formatDate = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
+  return (
+    <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-250 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
+      <div className={`relative bg-white w-full max-w-sm shadow-2xl flex flex-col transition-transform duration-250 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <Package className="w-3.5 h-3.5 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900 leading-tight">{asset.name}</p>
+              <p className="text-xs font-mono text-gray-400">{asset.asset_code}</p>
+            </div>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Status + Category */}
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[asset.status] ?? ''}`}>
+              {STATUS_LABELS[asset.status] ?? asset.status}
+            </span>
+            <span className="text-xs text-gray-500 capitalize">{asset.category}</span>
+          </div>
+
+          {/* Detail grid */}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Manufacturer</dt>
+              <dd className="text-gray-800">{asset.manufacturer ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Model</dt>
+              <dd className="text-gray-800">{asset.model ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Condition</dt>
+              <dd className="text-gray-800">{CONDITION_LABELS_FULL[asset.condition] ?? asset.condition}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Location</dt>
+              <dd className="text-gray-800">{asset.location ?? '—'}</dd>
+            </div>
+            <div className="col-span-2">
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Serial Number</dt>
+              <dd className="text-gray-800 font-mono text-xs">{asset.serial_number}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Purchase Date</dt>
+              <dd className="text-gray-800">{formatDate(asset.purchase_date)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Purchase Cost</dt>
+              <dd className="text-gray-800">{formatCurrency(asset.purchase_cost)}</dd>
+            </div>
+            <div className="col-span-2">
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Warranty Expiry</dt>
+              <dd className="text-gray-800">{formatDate(asset.warranty_expiry)}</dd>
+            </div>
+            {asset.notes && (
+              <div className="col-span-2">
+                <dt className="text-xs font-medium text-gray-400 mb-0.5">Notes</dt>
+                <dd className="text-gray-600 text-xs leading-relaxed">{asset.notes}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+
+        {/* Footer — Request CTA */}
+        <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+          {canRequest ? (
+            <button
+              onClick={() => { handleClose(); onRequestClick(asset); }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <ClipboardList className="w-4 h-4" />
+              Request This Item
+            </button>
+          ) : (
+            <div className="flex flex-col items-center gap-1 py-1">
+              <button
+                disabled
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-400 bg-gray-100 cursor-not-allowed"
+              >
+                <ClipboardList className="w-4 h-4" />
+                Request This Item
+              </button>
+              <p className="text-xs text-gray-400 mt-1">
+                This asset is currently <span className="capitalize font-medium">{asset.status.replace('_', ' ')}</span> and cannot be requested.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const AssetsPage: React.FC = () => {
@@ -1016,6 +1166,10 @@ const AssetsPage: React.FC = () => {
   // Assignment history state
   const [historyAsset, setHistoryAsset] = useState<Asset | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+
+  // Asset detail drawer + request modal state
+  const [drawerAsset, setDrawerAsset] = useState<Asset | null>(null);
+  const [requestItemContext, setRequestItemContext] = useState<ItemContext | null>(null);
 
   const [toast, setToast] = useState({ visible: false, message: '' });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1353,6 +1507,13 @@ const AssetsPage: React.FC = () => {
                     onStatusClick={openStatusModal}
                     onEditClick={openEditModal}
                     onHistoryClick={(a) => setHistoryAsset(a)}
+                    onRowClick={(a) => setDrawerAsset(a)}
+                    onRequestClick={(a) => setRequestItemContext({
+                      id: a.id,
+                      type: 'asset',
+                      label: `${a.name}${a.category ? ` (${a.category})` : ''}`,
+                      assetType: 'physical',
+                    })}
                   />
                 ))}
               </tbody>
@@ -1386,6 +1547,27 @@ const AssetsPage: React.FC = () => {
       <AssignAssetModal
         asset={historyAsset}
         onClose={() => setShowAssignModal(false)}
+      />
+    )}
+    {drawerAsset && (
+      <AssetDetailDrawer
+        asset={drawerAsset}
+        onClose={() => setDrawerAsset(null)}
+        onRequestClick={(a) => {
+          setDrawerAsset(null);
+          setRequestItemContext({
+            id: a.id,
+            type: 'asset',
+            label: `${a.name}${a.category ? ` (${a.category})` : ''}`,
+            assetType: 'physical',
+          });
+        }}
+      />
+    )}
+    {requestItemContext && (
+      <ItemRequestModal
+        itemContext={requestItemContext}
+        onClose={() => setRequestItemContext(null)}
       />
     )}
     </>

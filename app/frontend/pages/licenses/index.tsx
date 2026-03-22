@@ -29,7 +29,9 @@ import {
   Users,
   UserMinus,
   UserPlus,
+  ClipboardList,
 } from 'lucide-react';
+import ItemRequestModal, { ItemContext } from '../../components/ItemRequestModal';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -568,6 +570,162 @@ const SuccessToast: React.FC<SuccessToastProps> = ({ message, onDismiss }) => {
   );
 };
 
+// ─── License Detail Drawer ────────────────────────────────────────────────────
+
+const LicenseDetailDrawer: React.FC<{
+  license: License;
+  onClose: () => void;
+  onRequestClick: (license: License) => void;
+}> = ({ license, onClose, onRequestClick }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 250);
+  };
+
+  const seatsAvailable = license.seats_available ?? (license.total_seats - (license.seats_used ?? 0));
+  const canRequest = seatsAvailable > 0 && license.status !== 'expired';
+  const expiryDays = Math.ceil((new Date(license.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
+  const utilizationPct = license.total_seats > 0
+    ? Math.round(((license.seats_used ?? 0) / license.total_seats) * 100)
+    : 0;
+
+  return (
+    <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-250 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
+      <div className={`relative bg-white w-full max-w-sm shadow-2xl flex flex-col transition-transform duration-250 ${visible ? 'translate-x-0' : 'translate-x-full'}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5 text-violet-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900 leading-tight">{license.software_name}</p>
+              <p className="text-xs text-gray-400">{license.vendor}</p>
+            </div>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Status */}
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[license.status]}`}>
+              {STATUS_ICONS[license.status]}
+              {STATUS_LABELS[license.status]}
+            </span>
+            {license.status === 'expiring_soon' && (
+              <span className="text-xs text-amber-600">{expiryDays}d left</span>
+            )}
+          </div>
+
+          {/* Seats */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-medium text-gray-500">Seat Utilization</p>
+              <p className="text-xs font-semibold text-gray-700">
+                {license.seats_used ?? 0} / {license.total_seats} used
+                <span className="ml-1 text-gray-400">({seatsAvailable} available)</span>
+              </p>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  utilizationPct >= 100 ? 'bg-red-500' : utilizationPct >= 75 ? 'bg-amber-400' : 'bg-emerald-500'
+                }`}
+                style={{ width: `${Math.min(utilizationPct, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Details */}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Cost</dt>
+              <dd className="text-gray-800">{formatCurrency(license.cost)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-400 mb-0.5">Expiry Date</dt>
+              <dd className="text-gray-800">{formatDate(license.expiry_date)}</dd>
+            </div>
+            {license.renewal_contact && (
+              <div className="col-span-2">
+                <dt className="text-xs font-medium text-gray-400 mb-0.5">Renewal Contact</dt>
+                <dd className="text-gray-800">{license.renewal_contact}</dd>
+              </div>
+            )}
+            {license.notes && (
+              <div className="col-span-2">
+                <dt className="text-xs font-medium text-gray-400 mb-0.5">Notes</dt>
+                <dd className="text-gray-600 text-xs leading-relaxed">{license.notes}</dd>
+              </div>
+            )}
+          </dl>
+
+          {/* Currently assigned */}
+          {license.license_seats.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-400 mb-2">Currently Assigned ({license.license_seats.length})</p>
+              <ul className="space-y-1.5 max-h-36 overflow-y-auto">
+                {license.license_seats.map((seat) => (
+                  <li key={seat.id} className="flex items-center gap-2 text-sm">
+                    <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                      <Users className="w-3 h-3 text-gray-400" />
+                    </div>
+                    <span className="text-gray-700 truncate">{seat.user.name ?? seat.user.email}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Footer — Request CTA */}
+        <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+          {canRequest ? (
+            <button
+              onClick={() => { handleClose(); onRequestClick(license); }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <ClipboardList className="w-4 h-4" />
+              Request This Item
+            </button>
+          ) : (
+            <div className="flex flex-col items-center gap-1 py-1">
+              <button
+                disabled
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-400 bg-gray-100 cursor-not-allowed"
+              >
+                <ClipboardList className="w-4 h-4" />
+                Request This Item
+              </button>
+              <p className="text-xs text-gray-400 mt-1">
+                {license.status === 'expired' ? 'This license has expired.' : 'No seats available.'}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── LicensesPage ─────────────────────────────────────────────────────────────
 
 const LicensesPage: React.FC = () => {
@@ -579,6 +737,8 @@ const LicensesPage: React.FC = () => {
   const [editingLicense, setEditingLicense] = useState<License | null>(null);
   const [managingLicense, setManagingLicense] = useState<License | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [drawerLicense, setDrawerLicense] = useState<License | null>(null);
+  const [requestItemContext, setRequestItemContext] = useState<ItemContext | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -712,6 +872,7 @@ const LicensesPage: React.FC = () => {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cost</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expiry</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3" />
                   {canWrite && (
                     <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
                   )}
@@ -722,8 +883,12 @@ const LicensesPage: React.FC = () => {
                   const days = daysUntilExpiry(license.expiry_date);
                   return (
                     <tr key={license.id} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="px-5 py-3.5">
-                        <div className="font-medium text-gray-900">{license.software_name}</div>
+                      <td
+                        className="px-5 py-3.5 cursor-pointer"
+                        onClick={() => setDrawerLicense(license)}
+                        title="View license details"
+                      >
+                        <div className="font-medium text-gray-900 hover:text-blue-700 transition-colors">{license.software_name}</div>
                         {license.purchase_order_number && (
                           <div className="text-xs text-gray-400 mt-0.5">{license.purchase_order_number}</div>
                         )}
@@ -771,6 +936,27 @@ const LicensesPage: React.FC = () => {
                           {STATUS_LABELS[license.status]}
                         </span>
                       </td>
+                      <td className="px-4 py-3.5">
+                        {(() => {
+                          const seatsAvail = license.seats_available ?? (license.total_seats - (license.seats_used ?? 0));
+                          const requestable = seatsAvail > 0 && license.status !== 'expired';
+                          return (
+                            <button
+                              onClick={() => requestable && setRequestItemContext({
+                                id: license.id,
+                                type: 'license',
+                                label: `${license.software_name} · ${license.vendor}`,
+                                assetType: 'software',
+                              })}
+                              disabled={!requestable}
+                              className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={requestable ? 'Request a seat' : license.status === 'expired' ? 'License expired' : 'No seats available'}
+                            >
+                              <ClipboardList className="w-3.5 h-3.5" />
+                            </button>
+                          );
+                        })()}
+                      </td>
                       {canWrite && (
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -814,6 +1000,27 @@ const LicensesPage: React.FC = () => {
       {editingLicense && <EditLicenseModal license={editingLicense} onClose={() => setEditingLicense(null)} />}
       {managingLicense && <ManageSeatsModal license={managingLicense} onClose={() => setManagingLicense(null)} />}
       {toast && <SuccessToast message={toast} onDismiss={() => setToast(null)} />}
+      {drawerLicense && (
+        <LicenseDetailDrawer
+          license={drawerLicense}
+          onClose={() => setDrawerLicense(null)}
+          onRequestClick={(l) => {
+            setDrawerLicense(null);
+            setRequestItemContext({
+              id: l.id,
+              type: 'license',
+              label: `${l.software_name} · ${l.vendor}`,
+              assetType: 'software',
+            });
+          }}
+        />
+      )}
+      {requestItemContext && (
+        <ItemRequestModal
+          itemContext={requestItemContext}
+          onClose={() => setRequestItemContext(null)}
+        />
+      )}
     </AppLayout>
   );
 };
