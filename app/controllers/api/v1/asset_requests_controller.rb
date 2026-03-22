@@ -63,34 +63,29 @@ class Api::V1::AssetRequestsController < Api::BaseController
   def update
     new_status = approval_params[:status]
 
-    if new_status == "rejected" && approval_params[:notes].blank?
-      return render json: {
-        status: 422,
-        message: "Notes is required when rejecting a request."
-      }, status: :unprocessable_entity
+    result = if new_status == "approved"
+      AssetRequests::ApproveAssetRequestUsecase.call(
+        asset_request: @asset_request,
+        current_user: current_user
+      )
+    else
+      AssetRequests::RejectAssetRequestUsecase.call(
+        asset_request: @asset_request,
+        current_user: current_user,
+        rejection_note: approval_params[:notes]
+      )
     end
 
-    old_status = @asset_request.status
-
-    if @asset_request.update(approval_params)
-      @asset_request.asset_request_status_logs.create!(
-        changed_by: current_user,
-        from_status: old_status,
-        to_status: @asset_request.status
-      )
-
+    if result.success?
       render json: {
         status: {
           code: 200,
           message: "Asset request #{new_status} successfully.",
-          data: { asset_request: AssetRequestBlueprint.render_as_hash(@asset_request) }
+          data: { asset_request: AssetRequestBlueprint.render_as_hash(result.asset_request) }
         }
       }, status: :ok
     else
-      render json: {
-        status: 422,
-        message: @asset_request.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
