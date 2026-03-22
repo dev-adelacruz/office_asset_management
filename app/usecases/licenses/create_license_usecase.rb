@@ -2,5 +2,6 @@
 
 class Licenses::CreateLicenseUsecase < ApplicationUsecase
   organize Licenses::ValidateLicenseParamsInteractor,
-           Licenses::PersistLicenseInteractor
+           Licenses::PersistLicenseInteractor,
+           Shared::RecordAuditLogInteractor
 end

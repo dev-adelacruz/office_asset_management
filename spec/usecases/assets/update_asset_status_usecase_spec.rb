@@ -25,6 +25,18 @@ RSpec.describe Assets::UpdateAssetStatusUsecase do
     it "creates an AssetStatusLog" do
       expect { result }.to change(AssetStatusLog, :count).by(1)
     end
+
+    it "creates an AuditLog record" do
+      expect { result }.to change(AuditLog, :count).by(1)
+    end
+
+    it "associates the AuditLog with the correct auditable and actor" do
+      result
+      log = AuditLog.last
+      expect(log.auditable).to eq(asset)
+      expect(log.actor).to eq(user)
+      expect(log.action).to eq("update")
+    end
   end
 
   describe "mid-chain failure — invalid status fails before any DB write" do
@@ -41,6 +53,10 @@ RSpec.describe Assets::UpdateAssetStatusUsecase do
 
     it "rolls back — no AssetStatusLog created" do
       expect { result }.not_to change(AssetStatusLog, :count)
+    end
+
+    it "rolls back — no AuditLog created" do
+      expect { result }.not_to change(AuditLog, :count)
     end
   end
 end

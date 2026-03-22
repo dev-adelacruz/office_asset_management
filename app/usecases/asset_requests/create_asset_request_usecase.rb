@@ -3,5 +3,6 @@
 class AssetRequests::CreateAssetRequestUsecase < ApplicationUsecase
   organize AssetRequests::ValidateAssetRequestParamsInteractor,
            AssetRequests::PersistAssetRequestInteractor,
-           AssetRequests::LogAssetRequestStatusInteractor
+           AssetRequests::LogAssetRequestStatusInteractor,
+           Shared::RecordAuditLogInteractor
 end

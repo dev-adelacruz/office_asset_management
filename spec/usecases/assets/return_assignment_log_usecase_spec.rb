@@ -4,8 +4,9 @@ require "rails_helper"
 
 RSpec.describe Assets::ReturnAssignmentLogUsecase do
   let!(:asset) { create(:asset, status: :assigned) }
+  let!(:user) { create(:user, :employee) }
 
-  subject(:result) { described_class.call(asset: asset, assignment_log: log) }
+  subject(:result) { described_class.call(asset: asset, assignment_log: log, current_user: user) }
 
   describe "happy path — only open assignment returned" do
     let!(:log) { create(:asset_assignment_log, asset: asset, returned_at: nil) }
@@ -22,6 +23,18 @@ RSpec.describe Assets::ReturnAssignmentLogUsecase do
     it "updates asset status to available" do
       result
       expect(asset.reload.status).to eq("available")
+    end
+
+    it "creates an AuditLog record" do
+      expect { result }.to change(AuditLog, :count).by(1)
+    end
+
+    it "associates the AuditLog with the assignment log" do
+      result
+      audit = AuditLog.last
+      expect(audit.auditable).to eq(log)
+      expect(audit.actor).to eq(user)
+      expect(audit.action).to eq("update")
     end
   end
 
@@ -53,6 +66,10 @@ RSpec.describe Assets::ReturnAssignmentLogUsecase do
 
     it "includes the already-returned message" do
       expect(result.message).to include("already been returned")
+    end
+
+    it "rolls back — no AuditLog created" do
+      expect { result }.not_to change(AuditLog, :count)
     end
   end
 end

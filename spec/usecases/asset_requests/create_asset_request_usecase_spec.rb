@@ -36,6 +36,18 @@ RSpec.describe AssetRequests::CreateAssetRequestUsecase do
     it "sets the status log to_status to pending" do
       expect(result.asset_request_status_log.to_status).to eq("pending")
     end
+
+    it "creates an AuditLog record" do
+      expect { result }.to change(AuditLog, :count).by(1)
+    end
+
+    it "associates the AuditLog with the asset request" do
+      result
+      log = AuditLog.last
+      expect(log.auditable).to eq(result.asset_request)
+      expect(log.actor).to eq(user)
+      expect(log.action).to eq("create")
+    end
   end
 
   describe "invalid params" do
@@ -51,6 +63,10 @@ RSpec.describe AssetRequests::CreateAssetRequestUsecase do
 
     it "rolls back — no status log created" do
       expect { result }.not_to change(AssetRequestStatusLog, :count)
+    end
+
+    it "rolls back — no AuditLog created" do
+      expect { result }.not_to change(AuditLog, :count)
     end
   end
 
@@ -73,6 +89,10 @@ RSpec.describe AssetRequests::CreateAssetRequestUsecase do
 
     it "rolls back — no status log created" do
       expect { result }.not_to change(AssetRequestStatusLog, :count)
+    end
+
+    it "rolls back — no AuditLog created" do
+      expect { result }.not_to change(AuditLog, :count)
     end
   end
 end

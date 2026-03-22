@@ -2,5 +2,6 @@
 
 class Assets::CreateAssetUsecase < ApplicationUsecase
   organize Assets::ValidateAssetParamsInteractor,
-           Assets::PersistAssetInteractor
+           Assets::PersistAssetInteractor,
+           Shared::RecordAuditLogInteractor
 end

@@ -4,5 +4,6 @@ class AssetRequests::RejectAssetRequestUsecase < ApplicationUsecase
   organize AssetRequests::ValidateRejectionNoteInteractor,
            AssetRequests::ValidateApprovalAuthorizationInteractor,
            AssetRequests::PersistRejectionInteractor,
-           AssetRequests::LogAssetRequestStatusInteractor
+           AssetRequests::LogAssetRequestStatusInteractor,
+           Shared::RecordAuditLogInteractor
 end

@@ -32,6 +32,18 @@ RSpec.describe Assets::CreateAssignmentLogUsecase do
       expect(result.assignment_log).to be_a(AssetAssignmentLog)
       expect(result.assignment_log).to be_persisted
     end
+
+    it "creates an AuditLog record" do
+      expect { result }.to change(AuditLog, :count).by(1)
+    end
+
+    it "associates the AuditLog with the assignment log" do
+      result
+      log = AuditLog.last
+      expect(log.auditable).to eq(result.assignment_log)
+      expect(log.actor).to eq(manager)
+      expect(log.action).to eq("create")
+    end
   end
 
   describe "mid-chain failure — invalid params fail before any DB write" do
@@ -48,6 +60,10 @@ RSpec.describe Assets::CreateAssignmentLogUsecase do
     it "rolls back — asset status unchanged" do
       result
       expect(asset.reload.status).to eq("available")
+    end
+
+    it "rolls back — no AuditLog created" do
+      expect { result }.not_to change(AuditLog, :count)
     end
   end
 end

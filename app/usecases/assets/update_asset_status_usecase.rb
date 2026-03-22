@@ -3,5 +3,6 @@
 class Assets::UpdateAssetStatusUsecase < ApplicationUsecase
   organize Assets::ValidateAssetStatusInteractor,
            Assets::PersistAssetStatusInteractor,
-           Assets::LogAssetStatusChangeInteractor
+           Assets::LogAssetStatusChangeInteractor,
+           Shared::RecordAuditLogInteractor
 end

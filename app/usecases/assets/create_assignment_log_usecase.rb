@@ -3,5 +3,6 @@
 class Assets::CreateAssignmentLogUsecase < ApplicationUsecase
   organize Assets::ValidateAssignmentParamsInteractor,
            Assets::PersistAssignmentLogInteractor,
-           Assets::SetAssetStatusAssignedInteractor
+           Assets::SetAssetStatusAssignedInteractor,
+           Shared::RecordAuditLogInteractor
 end

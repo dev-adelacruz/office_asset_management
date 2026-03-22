@@ -4,5 +4,6 @@ class Assets::ReturnAssignmentLogUsecase < ApplicationUsecase
   organize Assets::ValidateReturnParamsInteractor,
            Assets::PersistReturnInteractor,
            Assets::EvaluateAssetAvailabilityInteractor,
-           Assets::SetAssetStatusAvailableInteractor
+           Assets::SetAssetStatusAvailableInteractor,
+           Shared::RecordAuditLogInteractor
 end
