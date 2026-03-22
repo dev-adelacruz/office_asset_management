@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class AssetRequest < ApplicationRecord
-  include Auditable
   belongs_to :user
 
   has_many :asset_request_status_logs, dependent: :destroy

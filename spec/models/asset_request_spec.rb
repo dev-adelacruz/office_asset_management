@@ -31,8 +31,4 @@ RSpec.describe AssetRequest do
       expect(described_class::STATUSES).to eq(%w[pending approved rejected])
     end
   end
-
-  include_examples "auditable" do
-    let(:auditable_update_attrs) { { status: "approved" } }
-  end
 end

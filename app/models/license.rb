@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class License < ApplicationRecord
-  include Auditable
   encrypts :license_key
 
   validates :software_name, presence: true

@@ -54,8 +54,4 @@ RSpec.describe Asset do
       expect(codes.uniq.length).to eq(3)
     end
   end
-
-  include_examples "auditable" do
-    let(:auditable_update_attrs) { { name: "Updated Asset Name" } }
-  end
 end

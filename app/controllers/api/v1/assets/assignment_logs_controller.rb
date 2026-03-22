@@ -20,51 +20,41 @@ class Api::V1::Assets::AssignmentLogsController < Api::BaseController
   end
 
   def create
-    log = @asset.asset_assignment_logs.new(assignment_log_params)
-    log.assigned_by = current_user
+    result = Assets::CreateAssignmentLogUsecase.call(
+      asset: @asset,
+      assignment_params: assignment_log_params,
+      current_user: current_user
+    )
 
-    if log.save
-      @asset.update!(status: :assigned)
-
+    if result.success?
       render json: {
         status: {
           code: 201,
           message: "Asset assigned successfully.",
-          data: { assignment_log: AssetAssignmentLogBlueprint.render_as_hash(log) }
+          data: { assignment_log: AssetAssignmentLogBlueprint.render_as_hash(result.assignment_log) }
         }
       }, status: :created
     else
-      render json: {
-        status: 422,
-        message: log.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
   def update
-    if @log.returned_at.present?
-      return render json: {
-        status: 422,
-        message: "This assignment has already been returned."
-      }, status: :unprocessable_entity
-    end
+    result = Assets::ReturnAssignmentLogUsecase.call(
+      asset: @asset,
+      assignment_log: @log
+    )
 
-    if @log.update(returned_at: Time.current)
-      open_assignments = @asset.asset_assignment_logs.where(returned_at: nil).where.not(id: @log.id)
-      @asset.update!(status: :available) if open_assignments.none?
-
+    if result.success?
       render json: {
         status: {
           code: 200,
           message: "Asset return recorded successfully.",
-          data: { assignment_log: AssetAssignmentLogBlueprint.render_as_hash(@log) }
+          data: { assignment_log: AssetAssignmentLogBlueprint.render_as_hash(result.assignment_log) }
         }
       }, status: :ok
     else
-      render json: {
-        status: 422,
-        message: @log.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 

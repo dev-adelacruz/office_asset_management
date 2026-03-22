@@ -46,8 +46,4 @@ RSpec.describe License do
       expect(license.seats_available).to eq(3)
     end
   end
-
-  include_examples "auditable" do
-    let(:auditable_update_attrs) { { software_name: "Updated Software" } }
-  end
 end

@@ -28,6 +28,18 @@ RSpec.describe AssetRequests::ApproveAssetRequestUsecase do
     it "returns the updated asset_request on context" do
       expect(result.asset_request.status).to eq("approved")
     end
+
+    it "creates an AuditLog record" do
+      expect { result }.to change(AuditLog, :count).by(1)
+    end
+
+    it "associates the AuditLog with the asset request" do
+      result
+      log = AuditLog.last
+      expect(log.auditable).to eq(asset_request)
+      expect(log.actor).to eq(manager)
+      expect(log.action).to eq("update")
+    end
   end
 
   describe "unauthorized user" do
@@ -43,6 +55,10 @@ RSpec.describe AssetRequests::ApproveAssetRequestUsecase do
 
     it "does not change the asset_request status" do
       expect { result }.not_to change { asset_request.reload.status }
+    end
+
+    it "rolls back — no AuditLog created" do
+      expect { result }.not_to change(AuditLog, :count)
     end
   end
 
@@ -65,6 +81,10 @@ RSpec.describe AssetRequests::ApproveAssetRequestUsecase do
 
     it "rolls back — no status log created" do
       expect { result }.not_to change(AssetRequestStatusLog, :count)
+    end
+
+    it "rolls back — no AuditLog created" do
+      expect { result }.not_to change(AuditLog, :count)
     end
   end
 end

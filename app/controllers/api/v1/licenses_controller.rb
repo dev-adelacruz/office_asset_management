@@ -31,38 +31,34 @@ class Api::V1::LicensesController < Api::BaseController
   end
 
   def create
-    license = License.new(license_params)
+    result = Licenses::CreateLicenseUsecase.call(license_params: license_params)
 
-    if license.save
+    if result.success?
       render json: {
         status: {
           code: 201,
           message: "License registered successfully.",
-          data: { license: LicenseBlueprint.render_as_hash(license) }
+          data: { license: LicenseBlueprint.render_as_hash(result.license) }
         }
       }, status: :created
     else
-      render json: {
-        status: 422,
-        message: license.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
   def update
-    if @license.update(license_params)
+    result = Licenses::UpdateLicenseUsecase.call(license: @license, license_params: license_params)
+
+    if result.success?
       render json: {
         status: {
           code: 200,
           message: "License updated successfully.",
-          data: { license: LicenseBlueprint.render_as_hash(@license) }
+          data: { license: LicenseBlueprint.render_as_hash(result.license) }
         }
       }, status: :ok
     else
-      render json: {
-        status: 422,
-        message: @license.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
