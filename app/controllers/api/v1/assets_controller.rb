@@ -51,38 +51,34 @@ class Api::V1::AssetsController < Api::BaseController
   end
 
   def create
-    asset = Asset.new(asset_params)
+    result = Assets::CreateAssetUsecase.call(asset_params: asset_params)
 
-    if asset.save
+    if result.success?
       render json: {
         status: {
           code: 201,
           message: "Asset registered successfully.",
-          data: { asset: AssetBlueprint.render_as_hash(asset) }
+          data: { asset: AssetBlueprint.render_as_hash(result.asset) }
         }
       }, status: :created
     else
-      render json: {
-        status: 422,
-        message: asset.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
   def update
-    if @asset.update(asset_params)
+    result = Assets::UpdateAssetUsecase.call(asset: @asset, asset_params: asset_params)
+
+    if result.success?
       render json: {
         status: {
           code: 200,
           message: "Asset updated successfully.",
-          data: { asset: AssetBlueprint.render_as_hash(@asset) }
+          data: { asset: AssetBlueprint.render_as_hash(result.asset) }
         }
       }, status: :ok
     else
-      render json: {
-        status: 422,
-        message: @asset.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
