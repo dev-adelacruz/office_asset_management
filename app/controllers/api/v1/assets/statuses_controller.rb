@@ -4,40 +4,23 @@ class Api::V1::Assets::StatusesController < Api::BaseController
   before_action :require_manager_or_executive!
   before_action :set_asset
 
-  VALID_STATUSES = Asset.statuses.keys.freeze
-
   def update
-    new_status = params[:status]
+    result = Assets::UpdateAssetStatusUsecase.call(
+      asset: @asset,
+      status: params[:status],
+      current_user: current_user
+    )
 
-    unless VALID_STATUSES.include?(new_status)
-      return render json: {
-        status: 422,
-        message: "Invalid status. Must be one of: #{VALID_STATUSES.join(', ')}."
-      }, status: :unprocessable_entity
-    end
-
-    from_status = @asset.status
-
-    if @asset.update(status: new_status)
-      AssetStatusLog.create!(
-        asset: @asset,
-        changed_by: current_user,
-        from_status: from_status,
-        to_status: @asset.status
-      )
-
+    if result.success?
       render json: {
         status: {
           code: 200,
           message: "Asset status updated successfully.",
-          data: { asset: AssetBlueprint.render_as_hash(@asset) }
+          data: { asset: AssetBlueprint.render_as_hash(result.asset) }
         }
       }, status: :ok
     else
-      render json: {
-        status: 422,
-        message: @asset.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      render json: { status: 422, message: result.message }, status: :unprocessable_entity
     end
   end
 
