@@ -1037,7 +1037,7 @@ const AssetsPage: React.FC = () => {
 
   // Detect newly created asset to trigger toast
   useEffect(() => {
-    if (assets.length > prevAssetCount.current) {
+    if (prevAssetCount.current > 0 && assets.length > prevAssetCount.current) {
       showToast('Asset registered successfully.');
     }
     prevAssetCount.current = assets.length;
