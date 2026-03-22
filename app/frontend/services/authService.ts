@@ -39,7 +39,7 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Login failed with status ${response.status}`);
+        throw new Error(errorData.message || errorData.error || `Login failed with status ${response.status}`);
       }
 
       const token = response.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
