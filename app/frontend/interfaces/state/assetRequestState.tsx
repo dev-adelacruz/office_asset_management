@@ -17,6 +17,19 @@ export interface AssetRequestStatusLog {
   changed_by: AssetRequestUser;
 }
 
+export interface AssetRequestItemAsset {
+  id: number;
+  name: string;
+  status: string;
+  category: string;
+}
+
+export interface AssetRequestItemLicense {
+  id: number;
+  software_name: string;
+  vendor: string;
+}
+
 export interface AssetRequest {
   id: number;
   asset_type: AssetRequestType;
@@ -25,6 +38,10 @@ export interface AssetRequest {
   preferred_fulfillment_date: string | null;
   status: AssetRequestStatus;
   notes: string | null;
+  asset_id: number | null;
+  license_id: number | null;
+  asset: AssetRequestItemAsset | null;
+  license: AssetRequestItemLicense | null;
   user: AssetRequestUser;
   created_at: string;
   updated_at: string;

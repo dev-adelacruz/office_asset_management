@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_200003) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_22_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -42,17 +42,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_200003) do
   end
 
   create_table "asset_requests", force: :cascade do |t|
+    t.bigint "asset_id"
     t.string "asset_type", null: false
     t.datetime "created_at", null: false
     t.text "justification", null: false
+    t.bigint "license_id"
     t.text "notes"
     t.date "preferred_fulfillment_date"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.string "urgency", default: "medium", null: false
     t.bigint "user_id", null: false
+    t.index ["asset_id"], name: "index_asset_requests_on_asset_id"
     t.index ["asset_type"], name: "index_asset_requests_on_asset_type"
     t.index ["created_at"], name: "index_asset_requests_on_created_at"
+    t.index ["license_id"], name: "index_asset_requests_on_license_id"
     t.index ["status"], name: "index_asset_requests_on_status"
     t.index ["urgency"], name: "index_asset_requests_on_urgency"
     t.index ["user_id"], name: "index_asset_requests_on_user_id"
@@ -176,6 +180,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_200003) do
   add_foreign_key "asset_assignment_logs", "users", column: "assigned_to_id"
   add_foreign_key "asset_request_status_logs", "asset_requests"
   add_foreign_key "asset_request_status_logs", "users", column: "changed_by_id"
+  add_foreign_key "asset_requests", "assets"
+  add_foreign_key "asset_requests", "licenses"
   add_foreign_key "asset_requests", "users"
   add_foreign_key "asset_status_logs", "assets"
   add_foreign_key "asset_status_logs", "users", column: "changed_by_id"

@@ -16,6 +16,8 @@ export interface CreateAssetRequestParams {
   urgency: string;
   preferred_fulfillment_date?: string;
   notes?: string;
+  asset_id?: number;
+  license_id?: number;
 }
 
 class AssetRequestService {
