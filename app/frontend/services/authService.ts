@@ -57,13 +57,21 @@ class AuthService {
 
   async logout(token: string): Promise<void> {
     try {
+      // Only include Authorization header if the token is a well-formed JWT
+      // (3 base64url segments separated by dots). A malformed token causes
+      // warden-jwt_auth's RevocationManager middleware to crash with
+      // JWT::DecodeError before the 200 OK response can be returned.
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      if (token.split('.').length === 3) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${this.baseURL}/users/sign_out`, {
         method: 'DELETE',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {
