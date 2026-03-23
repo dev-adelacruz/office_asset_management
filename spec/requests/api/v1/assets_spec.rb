@@ -48,6 +48,28 @@ RSpec.describe 'Assets' do
             expect(pagination[:total_count]).to eq 3
             expect(pagination[:per_page]).to eq 25
             expect(pagination[:total_pages]).to eq 1
+            summary = json_response[:status][:data][:summary]
+            expect(summary).to include(:active, :available, :assigned, :under_maintenance)
+          end
+        end
+
+        response(200, 'summary counts reflect full database, not current page') do
+          let(:page) { 2 }
+          let(:per_page) { 1 }
+
+          before do
+            create(:asset, status: :available)
+            create(:asset, status: :available)
+            create(:asset, status: :assigned)
+            sign_in manager
+          end
+
+          run_test! do |response|
+            expect(json_response[:status][:data][:assets].length).to eq 1
+            summary = json_response[:status][:data][:summary]
+            expect(summary[:available]).to eq 2
+            expect(summary[:assigned]).to eq 1
+            expect(summary[:active]).to eq 3
           end
         end
 
