@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { authService } from '../../services/authService';
-import { profileService, ProfileParams } from '../../services/profileService';
+import { profileService, ProfileParams, ChangePasswordParams } from '../../services/profileService';
 import { tokenStorage } from '../../services/tokenStorage';
 
 // Async thunks for authentication
@@ -71,14 +71,31 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+export const changePassword = createAsyncThunk(
+  'user/changePassword',
+  async (params: ChangePasswordParams, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { user: UserState };
+      const token = state.user.token;
+      if (!token) throw new Error('Not authenticated');
+      await profileService.changePassword(params, token);
+      tokenStorage.clearToken();
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Password change failed');
+    }
+  }
+);
+
 const initialState: UserState = {
   isSignedIn: false,
   token: null,
   user: null,
   isLoading: false,
   isUpdatingProfile: false,
+  isChangingPassword: false,
   error: null,
   profileError: null,
+  passwordError: null,
 };
 
 const userSlice = createSlice({
@@ -151,6 +168,23 @@ const userSlice = createSlice({
     builder.addCase(checkAuthStatus.rejected, (state, action) => {
       state.isLoading = false
       state.error = action.payload as string
+    })
+
+    // Change password cases
+    builder.addCase(changePassword.pending, (state) => {
+      state.isChangingPassword = true
+      state.passwordError = null
+    })
+    builder.addCase(changePassword.fulfilled, (state) => {
+      state.isChangingPassword = false
+      state.isSignedIn = false
+      state.token = null
+      state.user = null
+      state.passwordError = null
+    })
+    builder.addCase(changePassword.rejected, (state, action) => {
+      state.isChangingPassword = false
+      state.passwordError = action.payload as string
     })
 
     // Update profile cases

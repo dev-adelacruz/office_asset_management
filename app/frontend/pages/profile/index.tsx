@@ -2,6 +2,7 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../state/store';
 import ProfileForm from '../../components/profile/ProfileForm';
+import ChangePasswordForm from '../../components/profile/ChangePasswordForm';
 import AppLayout from '../../components/layout/AppLayout';
 import { Mail, Phone, MapPin, Shield, Calendar, Building2 } from 'lucide-react';
 
@@ -124,14 +125,26 @@ const ProfilePage: React.FC = () => {
             )}
           </div>
 
-          {/* Right — edit form */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-7 pt-6 pb-2 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">Edit profile</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Changes are reflected immediately across the app.</p>
+          {/* Right — edit forms */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-7 pt-6 pb-2 border-b border-gray-100">
+                <h3 className="text-base font-semibold text-gray-900">Edit profile</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Changes are reflected immediately across the app.</p>
+              </div>
+              <div className="p-7">
+                <ProfileForm />
+              </div>
             </div>
-            <div className="p-7">
-              <ProfileForm />
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-7 pt-6 pb-2 border-b border-gray-100">
+                <h3 className="text-base font-semibold text-gray-900">Change password</h3>
+                <p className="text-xs text-gray-400 mt-0.5">You will be signed out after a successful password change.</p>
+              </div>
+              <div className="p-7">
+                <ChangePasswordForm />
+              </div>
             </div>
           </div>
 
