@@ -12,7 +12,7 @@ import { RootState } from '../../state/store';
 import { AssetRequest, AssetRequestStatus, AssetRequestUrgency, AssetRequestStatusLog } from '../../interfaces/state/assetRequestState';
 import AppLayout from '../../components/layout/AppLayout';
 import Pagination from '../../components/Pagination';
-import { Plus, ClipboardList, X, AlertTriangle, CheckCircle, Clock, ThumbsUp, ThumbsDown, History } from 'lucide-react';
+import { Plus, ClipboardList, X, AlertTriangle, CheckCircle, Clock, ThumbsUp, ThumbsDown, History, Search } from 'lucide-react';
 import ItemRequestModal from '../../components/ItemRequestModal';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -244,12 +244,30 @@ const RequestsPage: React.FC = () => {
   const [rejectTarget, setRejectTarget] = useState<AssetRequest | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterType, setFilterType] = useState('');
 
   const isManager = user?.role === 'manager' || user?.role === 'executive';
 
+  const hasActiveFilters = !!(searchQuery || filterStatus || filterType);
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterStatus('');
+    setFilterType('');
+    setCurrentPage(1);
+  };
+
   useEffect(() => {
-    dispatch(fetchAssetRequests({ page: currentPage, per_page: 25 }));
-  }, [dispatch, currentPage]);
+    dispatch(fetchAssetRequests({
+      page: currentPage,
+      per_page: 25,
+      q: searchQuery || undefined,
+      status: filterStatus || undefined,
+      asset_type: filterType || undefined,
+    }));
+  }, [dispatch, currentPage, searchQuery, filterStatus, filterType]);
 
   const handleApprove = async (req: AssetRequest) => {
     await dispatch(updateAssetRequest({ requestId: req.id, params: { status: 'approved' } }));
@@ -275,6 +293,53 @@ const RequestsPage: React.FC = () => {
             <Plus className="w-4 h-4" />
             New Request
           </button>
+        </div>
+
+        {/* Search & filter bar */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="Search by justification…"
+                className="w-full pl-9 pr-4 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all duration-150 placeholder:text-gray-400"
+              />
+            </div>
+            <div className="relative">
+              <select
+                value={filterStatus}
+                onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+                className="pl-3 pr-8 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none transition-all duration-150 cursor-pointer"
+              >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div className="relative">
+              <select
+                value={filterType}
+                onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
+                className="pl-3 pr-8 py-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none transition-all duration-150 cursor-pointer"
+              >
+                <option value="">All types</option>
+                <option value="physical">Physical</option>
+                <option value="software">Software</option>
+              </select>
+            </div>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors duration-150 whitespace-nowrap"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content */}
