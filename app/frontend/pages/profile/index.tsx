@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../state/store';
 import ProfileForm from '../../components/profile/ProfileForm';
 import ChangePasswordForm from '../../components/profile/ChangePasswordForm';
+import ChangeEmailForm from '../../components/profile/ChangeEmailForm';
 import AppLayout from '../../components/layout/AppLayout';
 import { Mail, Phone, MapPin, Shield, Calendar, Building2 } from 'lucide-react';
 
@@ -144,6 +145,16 @@ const ProfilePage: React.FC = () => {
               </div>
               <div className="p-7">
                 <ChangePasswordForm />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-7 pt-6 pb-2 border-b border-gray-100">
+                <h3 className="text-base font-semibold text-gray-900">Change email</h3>
+                <p className="text-xs text-gray-400 mt-0.5">A confirmation link will be sent to your new address before the change takes effect.</p>
+              </div>
+              <div className="p-7">
+                <ChangeEmailForm />
               </div>
             </div>
           </div>
