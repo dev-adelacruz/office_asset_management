@@ -45,9 +45,17 @@ export interface AssetPagination {
   per_page: number;
 }
 
+export interface AssetSummary {
+  active: number;
+  available: number;
+  assigned: number;
+  under_maintenance: number;
+}
+
 export interface AssetState {
   assets: Asset[];
   pagination: AssetPagination | null;
+  summary: AssetSummary | null;
   assignmentLogs: AssetAssignmentLog[];
   isLoading: boolean;
   isCreating: boolean;

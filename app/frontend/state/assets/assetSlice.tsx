@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { assetService, CreateAssetParams, CreateAssignmentLogParams, FetchAssetsParams } from '../../services/assetService';
 
-import { AssetAssignmentLog, AssetPagination, AssetStatus } from '../../interfaces/state/assetState';
+import { AssetAssignmentLog, AssetPagination, AssetStatus, AssetSummary } from '../../interfaces/state/assetState';
 import { RootState } from '../store';
 
 export const fetchAssets = createAsyncThunk(
@@ -93,6 +93,7 @@ const assetSlice = createSlice({
   initialState: {
     assets: [] as import('../../interfaces/state/assetState').Asset[],
     pagination: null as AssetPagination | null,
+    summary: null as AssetSummary | null,
     assignmentLogs: [] as AssetAssignmentLog[],
     isLoading: false,
     isCreating: false,
@@ -139,6 +140,7 @@ const assetSlice = createSlice({
       state.isLoading = false;
       state.assets = action.payload.assets;
       state.pagination = action.payload.pagination;
+      state.summary = action.payload.summary;
     });
     builder.addCase(fetchAssets.rejected, (state, action) => {
       state.isLoading = false;

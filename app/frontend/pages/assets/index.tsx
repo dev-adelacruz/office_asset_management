@@ -1141,7 +1141,7 @@ const AssetDetailDrawer: React.FC<{
 
 const AssetsPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { assets, pagination, isLoading, error } = useSelector((state: RootState) => state.assets);
+  const { assets, pagination, summary, isLoading, error } = useSelector((state: RootState) => state.assets);
   const user = useSelector((state: RootState) => state.user.user);
 
   const canCreate = user?.role === 'manager' || user?.role === 'executive';
@@ -1297,13 +1297,12 @@ const AssetsPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Stats summary — retired and lost excluded from "active" count per AC
-  const activeAssets = assets.filter((a) => a.status !== 'retired' && a.status !== 'lost');
+  // Stats summary — sourced from backend counts across all assets in the database
   const stats = [
-    { label: 'Active', value: activeAssets.length, color: 'text-gray-900' },
-    { label: 'Available', value: assets.filter((a) => a.status === 'available').length, color: 'text-emerald-600' },
-    { label: 'Assigned', value: assets.filter((a) => a.status === 'assigned').length, color: 'text-blue-600' },
-    { label: 'Maintenance', value: assets.filter((a) => a.status === 'under_maintenance').length, color: 'text-amber-600' },
+    { label: 'Active', value: summary?.active ?? 0, color: 'text-gray-900' },
+    { label: 'Available', value: summary?.available ?? 0, color: 'text-emerald-600' },
+    { label: 'Assigned', value: summary?.assigned ?? 0, color: 'text-blue-600' },
+    { label: 'Maintenance', value: summary?.under_maintenance ?? 0, color: 'text-amber-600' },
   ];
 
   return (

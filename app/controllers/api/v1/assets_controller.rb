@@ -16,6 +16,14 @@ class Api::V1::AssetsController < Api::BaseController
     assets      = scope.order(created_at: :desc).limit(per_page).offset(offset)
     total_pages = (total.to_f / per_page).ceil
 
+    status_counts = Asset.group(:status).count
+    summary = {
+      active: Asset.where.not(status: %w[retired lost]).count,
+      available: status_counts["available"] || 0,
+      assigned: status_counts["assigned"] || 0,
+      under_maintenance: status_counts["under_maintenance"] || 0
+    }
+
     render json: {
       status: {
         code: 200,
@@ -27,7 +35,8 @@ class Api::V1::AssetsController < Api::BaseController
             total_pages: total_pages,
             total_count: total,
             per_page: per_page
-          }
+          },
+          summary: summary
         }
       }
     }, status: :ok

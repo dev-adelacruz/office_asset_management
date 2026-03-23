@@ -1,4 +1,4 @@
-import { Asset, AssetAssignmentLog, AssetCategory, AssetCondition, AssetPagination, AssetStatus } from '../interfaces/state/assetState';
+import { Asset, AssetAssignmentLog, AssetCategory, AssetCondition, AssetPagination, AssetStatus, AssetSummary } from '../interfaces/state/assetState';
 
 export interface FetchAssetsParams {
   page?: number;
@@ -14,6 +14,7 @@ export interface FetchAssetsParams {
 export interface ListAssetsResult {
   assets: Asset[];
   pagination: AssetPagination;
+  summary: AssetSummary;
 }
 
 export interface CreateAssignmentLogParams {
@@ -66,6 +67,7 @@ class AssetService {
     return {
       assets: data.status?.data?.assets ?? [],
       pagination: data.status?.data?.pagination ?? { current_page: 1, total_pages: 1, total_count: 0, per_page: 25 },
+      summary: data.status?.data?.summary ?? { active: 0, available: 0, assigned: 0, under_maintenance: 0 },
     };
   }
 
