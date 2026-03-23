@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { authService } from '../../services/authService';
-import { profileService, ProfileParams, ChangePasswordParams } from '../../services/profileService';
+import { profileService, ProfileParams, ChangePasswordParams, ChangeEmailParams } from '../../services/profileService';
 import { tokenStorage } from '../../services/tokenStorage';
 
 // Async thunks for authentication
@@ -41,7 +41,7 @@ export const checkAuthStatus = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = tokenStorage.getToken();
-      
+
       if (token) {
         const { valid, user } = await authService.validateToken(token);
 
@@ -86,6 +86,21 @@ export const changePassword = createAsyncThunk(
   }
 );
 
+export const changeEmail = createAsyncThunk(
+  'user/changeEmail',
+  async (params: ChangeEmailParams, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { user: UserState };
+      const token = state.user.token;
+      if (!token) throw new Error('Not authenticated');
+      const message = await profileService.changeEmail(params, token);
+      return { pendingEmail: params.email, message };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Email change request failed');
+    }
+  }
+);
+
 const initialState: UserState = {
   isSignedIn: false,
   token: null,
@@ -93,9 +108,12 @@ const initialState: UserState = {
   isLoading: false,
   isUpdatingProfile: false,
   isChangingPassword: false,
+  isChangingEmail: false,
   error: null,
   profileError: null,
   passwordError: null,
+  emailError: null,
+  emailPendingMessage: null,
 };
 
 const userSlice = createSlice({
@@ -185,6 +203,24 @@ const userSlice = createSlice({
     builder.addCase(changePassword.rejected, (state, action) => {
       state.isChangingPassword = false
       state.passwordError = action.payload as string
+    })
+
+    // Change email cases
+    builder.addCase(changeEmail.pending, (state) => {
+      state.isChangingEmail = true
+      state.emailError = null
+      state.emailPendingMessage = null
+    })
+    builder.addCase(changeEmail.fulfilled, (state, action) => {
+      state.isChangingEmail = false
+      state.emailPendingMessage = action.payload.message
+      if (state.user) {
+        state.user = { ...state.user, pending_email: action.payload.pendingEmail }
+      }
+    })
+    builder.addCase(changeEmail.rejected, (state, action) => {
+      state.isChangingEmail = false
+      state.emailError = action.payload as string
     })
 
     // Update profile cases

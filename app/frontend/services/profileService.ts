@@ -11,6 +11,11 @@ export interface AdminChangePasswordParams {
   password_confirmation: string;
 }
 
+export interface ChangeEmailParams {
+  current_password: string;
+  email: string;
+}
+
 export interface ProfileParams {
   name?: string;
   phone_number?: string;
@@ -93,6 +98,25 @@ class ProfileService {
 
     const data = await response.json();
     return { user: data.status?.data?.user };
+  }
+
+  async changeEmail(params: ChangeEmailParams, token: string): Promise<string> {
+    const response = await fetch(`${this.baseURL}/users/email`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ user: params }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Email change failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.status?.message ?? 'Confirmation email sent.';
   }
 }
 
