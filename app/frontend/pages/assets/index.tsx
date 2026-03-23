@@ -146,6 +146,11 @@ const AssetRow: React.FC<{
           {STATUS_LABELS[asset.status] ?? asset.status}
         </span>
       )}
+      {asset.status === 'assigned' && asset.current_assignee && (
+        <p className="text-xs text-gray-400 mt-1 truncate max-w-[140px]">
+          {asset.current_assignee.name ?? asset.current_assignee.email}
+        </p>
+      )}
     </td>
     <td className="px-5 py-3.5 text-sm text-gray-400">{asset.location ?? '—'}</td>
     <td className="px-5 py-3.5">

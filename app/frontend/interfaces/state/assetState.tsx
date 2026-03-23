@@ -34,6 +34,7 @@ export interface Asset {
   warranty_expiry: string | null;
   location: string | null;
   notes: string | null;
+  current_assignee: AssetAssignmentUser | null;
   created_at: string;
   updated_at: string;
 }

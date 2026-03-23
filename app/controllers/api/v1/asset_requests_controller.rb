@@ -72,26 +72,37 @@ class Api::V1::AssetRequestsController < Api::BaseController
 
     old_status = @asset_request.status
 
-    if @asset_request.update(approval_params)
+    ActiveRecord::Base.transaction do
+      @asset_request.update!(approval_params)
+
       @asset_request.asset_request_status_logs.create!(
         changed_by: current_user,
         from_status: old_status,
         to_status: @asset_request.status
       )
 
-      render json: {
-        status: {
-          code: 200,
-          message: "Asset request #{new_status} successfully.",
-          data: { asset_request: AssetRequestBlueprint.render_as_hash(@asset_request) }
-        }
-      }, status: :ok
-    else
-      render json: {
-        status: 422,
-        message: @asset_request.errors.full_messages.join(", ")
-      }, status: :unprocessable_entity
+      if new_status == "approved" && @asset_request.asset.present?
+        @asset_request.asset.update!(status: :assigned)
+        @asset_request.asset.asset_assignment_logs.create!(
+          assigned_to: @asset_request.user,
+          assigned_by: current_user,
+          assigned_at: Time.current
+        )
+      end
     end
+
+    render json: {
+      status: {
+        code: 200,
+        message: "Asset request #{new_status} successfully.",
+        data: { asset_request: AssetRequestBlueprint.render_as_hash(@asset_request) }
+      }
+    }, status: :ok
+  rescue ActiveRecord::RecordInvalid => e
+    render json: {
+      status: 422,
+      message: e.record.errors.full_messages.join(", ")
+    }, status: :unprocessable_entity
   end
 
   private
