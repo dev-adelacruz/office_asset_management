@@ -357,6 +357,49 @@ RSpec.describe 'Asset Requests' do
           end
         end
 
+        response(200, 'approving a physical request updates asset status and creates assignment log') do
+          let(:asset) { create(:asset, status: :available) }
+          let(:request_with_asset) { create(:asset_request, user: employee, asset: asset) }
+          let(:id) { request_with_asset.id }
+          let(:body) { { asset_request: { status: 'approved' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(asset.reload.status).to eq 'assigned'
+            log = asset.asset_assignment_logs.last
+            expect(log).to be_present
+            expect(log.assigned_to).to eq employee
+            expect(log.assigned_by).to eq manager
+            expect(log.returned_at).to be_nil
+          end
+        end
+
+        response(200, 'rejecting a request does not change the asset status') do
+          let(:asset) { create(:asset, status: :available) }
+          let(:request_with_asset) { create(:asset_request, user: employee, asset: asset) }
+          let(:id) { request_with_asset.id }
+          let(:body) { { asset_request: { status: 'rejected', notes: 'Budget freeze.' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(asset.reload.status).to eq 'available'
+            expect(asset.asset_assignment_logs).to be_empty
+          end
+        end
+
+        response(200, 'approving a request without a linked asset creates no assignment log') do
+          let(:id) { pending_request.id }
+          let(:body) { { asset_request: { status: 'approved' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(AssetAssignmentLog.count).to eq 0
+          end
+        end
+
         response(200, 'manager rejects a request with notes') do
           let(:id) { pending_request.id }
           let(:body) { { asset_request: { status: 'rejected', notes: 'Budget not available this quarter.' } } }

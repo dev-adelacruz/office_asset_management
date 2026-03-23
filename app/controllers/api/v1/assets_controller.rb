@@ -13,7 +13,7 @@ class Api::V1::AssetsController < Api::BaseController
 
     scope       = filtered_assets
     total       = scope.count
-    assets      = scope.order(created_at: :desc).limit(per_page).offset(offset)
+    assets      = scope.includes(asset_assignment_logs: :assigned_to).order(created_at: :desc).limit(per_page).offset(offset)
     total_pages = (total.to_f / per_page).ceil
 
     status_counts = Asset.group(:status).count
