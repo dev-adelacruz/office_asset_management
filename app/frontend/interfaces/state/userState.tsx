@@ -12,6 +12,8 @@ interface UserState {
   } | null;
   isLoading: boolean;
   isUpdatingProfile: boolean;
+  isChangingPassword: boolean;
   error: string | null;
   profileError: string | null;
+  passwordError: string | null;
 }
