@@ -878,10 +878,7 @@ const LicensesPage: React.FC = () => {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cost</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expiry</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="px-4 py-3" />
-                  {canWrite && (
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
-                  )}
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -942,47 +939,47 @@ const LicensesPage: React.FC = () => {
                           {STATUS_LABELS[license.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
-                        {(() => {
-                          const seatsAvail = license.seats_available ?? (license.total_seats - (license.seats_used ?? 0));
-                          const requestable = seatsAvail > 0 && license.status !== 'expired';
-                          return (
-                            <button
-                              onClick={() => requestable && setRequestItemContext({
-                                id: license.id,
-                                type: 'license',
-                                label: `${license.software_name} · ${license.vendor}`,
-                                assetType: 'software',
-                              })}
-                              disabled={!requestable}
-                              className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                              title={requestable ? 'Request a seat' : license.status === 'expired' ? 'License expired' : 'No seats available'}
-                            >
-                              <ClipboardList className="w-3.5 h-3.5" />
-                            </button>
-                          );
-                        })()}
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {(() => {
+                            const seatsAvail = license.seats_available ?? (license.total_seats - (license.seats_used ?? 0));
+                            const requestable = seatsAvail > 0 && license.status !== 'expired';
+                            return (
+                              <button
+                                onClick={() => requestable && setRequestItemContext({
+                                  id: license.id,
+                                  type: 'license',
+                                  label: `${license.software_name} · ${license.vendor}`,
+                                  assetType: 'software',
+                                })}
+                                disabled={!requestable}
+                                className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={requestable ? 'Request a seat' : license.status === 'expired' ? 'License expired' : 'No seats available'}
+                              >
+                                <ClipboardList className="w-3.5 h-3.5" />
+                              </button>
+                            );
+                          })()}
+                          {canWrite && (
+                            <>
+                              <button
+                                onClick={() => setManagingLicense(license)}
+                                className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-violet-100 hover:text-violet-700 transition-colors"
+                                title="Manage seats"
+                              >
+                                <Users className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setEditingLicense(license)}
+                                className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                                title="Edit license"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
-                      {canWrite && (
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => setManagingLicense(license)}
-                              className="p-1.5 rounded-lg text-gray-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
-                              title="Manage seats"
-                            >
-                              <Users className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setEditingLicense(license)}
-                              className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                              title="Edit license"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
                     </tr>
                   );
                 })}
