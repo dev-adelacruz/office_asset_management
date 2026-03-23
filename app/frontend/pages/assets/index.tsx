@@ -157,7 +157,7 @@ const AssetRow: React.FC<{
       <div className="flex items-center gap-1">
         <button
           onClick={() => onHistoryClick(asset)}
-          className="p-1.5 rounded-lg text-gray-300 hover:text-purple-500 hover:bg-purple-50 transition-colors duration-150"
+          className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition-colors duration-150"
           title="Assignment history"
         >
           <History className="w-3.5 h-3.5" />
@@ -165,7 +165,7 @@ const AssetRow: React.FC<{
         {canChangeStatus && (
           <button
             onClick={() => onEditClick(asset)}
-            className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors duration-150"
+            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-colors duration-150"
             title="Edit asset"
           >
             <Pencil className="w-3.5 h-3.5" />
@@ -174,7 +174,7 @@ const AssetRow: React.FC<{
         <button
           onClick={() => REQUESTABLE_STATUS.includes(asset.status) && onRequestClick(asset)}
           disabled={!REQUESTABLE_STATUS.includes(asset.status)}
-          className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
           title={REQUESTABLE_STATUS.includes(asset.status) ? 'Request this asset' : `Cannot request — asset is ${asset.status.replace('_', ' ')}`}
         >
           <ClipboardList className="w-3.5 h-3.5" />
@@ -1509,7 +1509,7 @@ const AssetsPage: React.FC = () => {
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Condition</th>
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Status</th>
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Location</th>
-                  <th className="px-5 py-3.5 bg-gray-50/80" />
+                  <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
