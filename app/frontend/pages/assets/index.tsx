@@ -154,7 +154,7 @@ const AssetRow: React.FC<{
     </td>
     <td className="px-5 py-3.5 text-sm text-gray-400">{asset.location ?? '—'}</td>
     <td className="px-5 py-3.5">
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center gap-1">
         <button
           onClick={() => onHistoryClick(asset)}
           className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition-colors duration-150"
@@ -1509,7 +1509,7 @@ const AssetsPage: React.FC = () => {
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Condition</th>
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Status</th>
                   <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Location</th>
-                  <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80 text-right">Action</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/80">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">

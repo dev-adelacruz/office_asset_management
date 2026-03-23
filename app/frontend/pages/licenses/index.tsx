@@ -878,7 +878,7 @@ const LicensesPage: React.FC = () => {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cost</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expiry</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -939,8 +939,8 @@ const LicensesPage: React.FC = () => {
                           {STATUS_LABELS[license.status]}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1">
                           {(() => {
                             const seatsAvail = license.seats_available ?? (license.total_seats - (license.seats_used ?? 0));
                             const requestable = seatsAvail > 0 && license.status !== 'expired';
