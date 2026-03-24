@@ -89,6 +89,10 @@ class Api::V1::AssetRequestsController < Api::BaseController
           assigned_at: Time.current
         )
       end
+
+      if new_status == "approved" && @asset_request.license.present?
+        LicenseSeat.create!(license: @asset_request.license, user: @asset_request.user)
+      end
     end
 
     render json: {

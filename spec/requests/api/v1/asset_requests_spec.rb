@@ -400,6 +400,33 @@ RSpec.describe 'Asset Requests' do
           end
         end
 
+        response(200, 'approving a license request creates a LicenseSeat and increments seats_used') do
+          let(:license) { create(:license, total_seats: 5) }
+          let(:license_request) { create(:asset_request, user: employee, license: license, asset_type: 'software') }
+          let(:id) { license_request.id }
+          let(:body) { { asset_request: { status: 'approved' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(LicenseSeat.where(license: license, user: employee).count).to eq 1
+            expect(license.reload.seats_used).to eq 1
+          end
+        end
+
+        response(200, 'rejecting a license request does not create a LicenseSeat') do
+          let(:license) { create(:license, total_seats: 5) }
+          let(:license_request) { create(:asset_request, user: employee, license: license, asset_type: 'software') }
+          let(:id) { license_request.id }
+          let(:body) { { asset_request: { status: 'rejected', notes: 'Budget freeze.' } } }
+          before { sign_in manager }
+
+          run_test! do |response|
+            expect(response).to have_http_status :ok
+            expect(LicenseSeat.count).to eq 0
+          end
+        end
+
         response(200, 'manager rejects a request with notes') do
           let(:id) { pending_request.id }
           let(:body) { { asset_request: { status: 'rejected', notes: 'Budget not available this quarter.' } } }
